@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/harakeishi/gopose/internal/generator"
 	"github.com/harakeishi/gopose/internal/parser"
@@ -19,6 +21,57 @@ var (
 	strategy   string
 	outputFile string
 )
+
+// parsePortRange はポート範囲文字列を解析します。
+func parsePortRange(portRangeStr string) (types.PortRange, error) {
+	if portRangeStr == "" {
+		// デフォルトのポート範囲を返す
+		return types.PortRange{Start: 8000, End: 9999}, nil
+	}
+
+	parts := strings.Split(portRangeStr, "-")
+	if len(parts) != 2 {
+		return types.PortRange{}, fmt.Errorf("無効なポート範囲形式です。正しい形式: start-end (例: 8000-9999)")
+	}
+
+	start, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return types.PortRange{}, fmt.Errorf("開始ポートが無効です: %s", parts[0])
+	}
+
+	end, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return types.PortRange{}, fmt.Errorf("終了ポートが無効です: %s", parts[1])
+	}
+
+	if start < 1 || start > 65535 {
+		return types.PortRange{}, fmt.Errorf("開始ポートは1-65535の範囲で指定してください: %d", start)
+	}
+
+	if end < 1 || end > 65535 {
+		return types.PortRange{}, fmt.Errorf("終了ポートは1-65535の範囲で指定してください: %d", end)
+	}
+
+	if start > end {
+		return types.PortRange{}, fmt.Errorf("開始ポートが終了ポートより大きいです: %d > %d", start, end)
+	}
+
+	return types.PortRange{Start: start, End: end}, nil
+}
+
+// createPortConfig はCLIオプションからポート設定を作成します。
+func createPortConfig(portRangeStr string) (types.PortConfig, error) {
+	portRange, err := parsePortRange(portRangeStr)
+	if err != nil {
+		return types.PortConfig{}, err
+	}
+
+	return types.PortConfig{
+		Range:             portRange,
+		Reserved:          []int{}, // 予約済みポートは空で開始
+		ExcludePrivileged: true,    // 特権ポートは除外
+	}, nil
+}
 
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
@@ -51,11 +104,18 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("ロガーの初期化に失敗しました: %w", err)
 		}
 
+		// ポート範囲の解析
+		portConfig, err := createPortConfig(portRange)
+		if err != nil {
+			return fmt.Errorf("ポート範囲の解析に失敗しました: %w", err)
+		}
+
 		logger.Info(ctx, "ポート衝突解決を開始",
 			types.Field{Key: "dry_run", Value: dryRun},
 			types.Field{Key: "compose_file", Value: filePath},
 			types.Field{Key: "output_file", Value: outputFile},
-			types.Field{Key: "strategy", Value: strategy})
+			types.Field{Key: "strategy", Value: strategy},
+			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)})
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
 		if filePath == "" || filePath == "docker-compose.yml" {
@@ -109,8 +169,8 @@ var upCmd = &cobra.Command{
 			resolutionStrategy = types.ResolutionStrategyUserDefined
 		}
 
-		// ポート衝突の解決
-		conflictResolver := resolver.NewConflictResolverImpl(portAllocator, logger)
+		// ポート衝突の解決（PortConfigを渡す）
+		conflictResolver := resolver.NewConflictResolverWithPortConfig(portAllocator, portConfig, logger)
 		resolutions, err := conflictResolver.ResolvePortConflicts(ctx, conflicts, resolutionStrategy)
 		if err != nil {
 			return fmt.Errorf("ポート衝突の解決に失敗: %w", err)

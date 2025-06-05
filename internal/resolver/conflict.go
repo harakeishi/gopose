@@ -136,13 +136,31 @@ func (d *ConflictDetectorImpl) isWellKnownPort(port int) bool {
 // ConflictResolverImpl はポート衝突解決の実装です。
 type ConflictResolverImpl struct {
 	portAllocator scanner.PortAllocator
+	portConfig    types.PortConfig
 	logger        logger.Logger
 }
 
 // NewConflictResolverImpl は新しいConflictResolverImplを作成します。
 func NewConflictResolverImpl(portAllocator scanner.PortAllocator, logger logger.Logger) *ConflictResolverImpl {
+	// デフォルトのポート設定を使用
+	defaultPortConfig := types.PortConfig{
+		Range:             types.PortRange{Start: 8000, End: 9000},
+		Reserved:          []int{},
+		ExcludePrivileged: true,
+	}
+
 	return &ConflictResolverImpl{
 		portAllocator: portAllocator,
+		portConfig:    defaultPortConfig,
+		logger:        logger,
+	}
+}
+
+// NewConflictResolverWithPortConfig はポート設定付きでConflictResolverImplを作成します。
+func NewConflictResolverWithPortConfig(portAllocator scanner.PortAllocator, portConfig types.PortConfig, logger logger.Logger) *ConflictResolverImpl {
+	return &ConflictResolverImpl{
+		portAllocator: portAllocator,
+		portConfig:    portConfig,
 		logger:        logger,
 	}
 }
@@ -212,20 +230,20 @@ func (r *ConflictResolverImpl) resolveByAutoIncrement(ctx context.Context, confl
 	for _, conflict := range conflicts {
 		// 元のポートに近い番号から開始
 		startPort := conflict.Port + 1
-		if startPort < 8000 {
-			startPort = 8000
+		if startPort < r.portConfig.Range.Start {
+			startPort = r.portConfig.Range.Start
 		}
 
 		portConfig := types.PortConfig{
-			Range:             types.PortRange{Start: startPort, End: 9000},
-			ExcludePrivileged: true,
-			Reserved:          allocatedPorts, // 既に割り当てたポートを除外
+			Range:             types.PortRange{Start: startPort, End: r.portConfig.Range.End},
+			ExcludePrivileged: r.portConfig.ExcludePrivileged,
+			Reserved:          append(allocatedPorts, r.portConfig.Reserved...), // 既に割り当てたポートと設定された予約ポートを除外
 		}
 
 		allocatedPort, err := r.portAllocator.AllocatePort(ctx, portConfig)
 		if err != nil {
-			// 元のポート+1での検索に失敗した場合は、8000番台の最初から検索
-			portConfig.Range.Start = 8000
+			// 元のポート+1での検索に失敗した場合は、設定された範囲の最初から検索
+			portConfig.Range.Start = r.portConfig.Range.Start
 			allocatedPort, err = r.portAllocator.AllocatePort(ctx, portConfig)
 			if err != nil {
 				r.logger.Warn(ctx, "適切な代替ポートが見つかりません",
@@ -261,16 +279,35 @@ func (r *ConflictResolverImpl) resolveByRangeAllocation(ctx context.Context, con
 		serviceGroups[conflict.ServiceName] = append(serviceGroups[conflict.ServiceName], conflict)
 	}
 
-	basePort := 8000
-	portIncrement := 100
+	basePort := r.portConfig.Range.Start
+	rangeSize := r.portConfig.Range.End - r.portConfig.Range.Start + 1
+	portIncrement := rangeSize / (len(serviceGroups) + 1) // サービス数に基づいて範囲を分割
+	if portIncrement < 10 {
+		portIncrement = 10 // 最低でも10ポートは確保
+	}
 
 	for serviceName, serviceConflicts := range serviceGroups {
 		// サービス専用のポート範囲を割り当て
 		serviceBasePort := basePort
 		basePort += portIncrement
 
+		// 範囲を超えないようにチェック
+		if serviceBasePort > r.portConfig.Range.End {
+			r.logger.Warn(ctx, "ポート範囲を超過するため、シーケンシャル割り当てを使用",
+				types.Field{Key: "service", Value: serviceName})
+			return r.resolveByAutoIncrement(ctx, conflicts)
+		}
+
 		for i, conflict := range serviceConflicts {
 			resolvedPort := serviceBasePort + i
+			if resolvedPort > r.portConfig.Range.End {
+				r.logger.Warn(ctx, "ポート範囲を超過",
+					types.Field{Key: "service", Value: serviceName},
+					types.Field{Key: "resolved_port", Value: resolvedPort},
+					types.Field{Key: "max_port", Value: r.portConfig.Range.End})
+				break
+			}
+
 			resolution := types.ConflictResolution{
 				ConflictPort: conflict.Port,
 				ResolvedPort: resolvedPort,
@@ -317,16 +354,17 @@ func (r *ConflictResolverImpl) generateAutoIncrementSuggestion(ctx context.Conte
 
 // generateRangeAllocationSuggestion は範囲割り当て提案を生成します。
 func (r *ConflictResolverImpl) generateRangeAllocationSuggestion(ctx context.Context, conflict types.Conflict) (types.ConflictResolution, error) {
-	// 8000番台への割り当てを提案
-	basePort := 8000
-	targetPort := basePort + (conflict.Port % 1000)
+	// 設定された範囲への割り当てを提案
+	basePort := r.portConfig.Range.Start
+	rangeSize := r.portConfig.Range.End - r.portConfig.Range.Start + 1
+	targetPort := basePort + (conflict.Port % rangeSize)
 
 	return types.ConflictResolution{
 		ConflictPort: conflict.Port,
 		ResolvedPort: targetPort,
 		ServiceName:  conflict.ServiceName,
 		Strategy:     types.ResolutionStrategyRangeAllocation,
-		Reason:       fmt.Sprintf("開発用ポート範囲 8000~ への移動"),
+		Reason:       fmt.Sprintf("設定されたポート範囲 %d-%d への移動", r.portConfig.Range.Start, r.portConfig.Range.End),
 	}, nil
 }
 
