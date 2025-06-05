@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/harakeishi/gopose/internal/errors"
@@ -51,13 +52,16 @@ func (g *OverrideGeneratorImpl) GenerateOverride(ctx context.Context, config *ty
 		serviceResolutions[serviceName] = append(serviceResolutions[serviceName], resolution)
 	}
 
-	// 各サービスのオーバーライド設定を生成
-	for serviceName, resolutionList := range serviceResolutions {
-		serviceOverride, err := g.generateServiceOverride(ctx, serviceName, resolutionList, config)
-		if err != nil {
-			return nil, fmt.Errorf("サービス %s のオーバーライド生成に失敗: %w", serviceName, err)
+	// すべてのサービスのオーバーライド設定を生成（ポートを持つサービスのみ）
+	for serviceName, service := range config.Services {
+		if len(service.Ports) > 0 {
+			resolutionList := serviceResolutions[serviceName] // 解決案がない場合は空のスライス
+			serviceOverride, err := g.generateServiceOverride(ctx, serviceName, resolutionList, config)
+			if err != nil {
+				return nil, fmt.Errorf("サービス %s のオーバーライド生成に失敗: %w", serviceName, err)
+			}
+			override.Services[serviceName] = serviceOverride
 		}
-		override.Services[serviceName] = serviceOverride
 	}
 
 	g.logger.Info(ctx, "Override生成完了",
@@ -84,19 +88,13 @@ func (g *OverrideGeneratorImpl) WriteOverrideFile(ctx context.Context, override 
 		}
 	}
 
-	// YAMLにマーシャル
-	yamlData, err := yaml.Marshal(override)
-	if err != nil {
-		return &errors.AppError{
-			Code:    errors.ErrFileWriteFailed,
-			Message: "YAMLのマーシャルに失敗しました",
-			Cause:   err,
-		}
-	}
-
 	// ヘッダーコメントを追加
 	header := g.generateFileHeader()
-	finalContent := append([]byte(header), yamlData...)
+
+	// カスタムYAML生成（!overrideタグ付き）
+	yamlContent := g.generateOverrideYAML(override)
+
+	finalContent := []byte(header + yamlContent)
 
 	// ファイルに書き込み
 	if err := os.WriteFile(outputPath, finalContent, 0644); err != nil {
@@ -264,6 +262,61 @@ func (g *OverrideGeneratorImpl) validateResolutionUniqueness(ctx context.Context
 	}
 
 	return nil
+}
+
+// convertToComposeFormat はDocker Compose互換の形式に変換します。
+func (g *OverrideGeneratorImpl) convertToComposeFormat(override *types.OverrideConfig) map[string]interface{} {
+	composeServices := make(map[string]interface{})
+
+	for serviceName, serviceOverride := range override.Services {
+		service := make(map[string]interface{})
+
+		// ポートを文字列形式に変換
+		if len(serviceOverride.Ports) > 0 {
+			ports := make([]string, 0, len(serviceOverride.Ports))
+			for _, port := range serviceOverride.Ports {
+				// "host:container" 形式に変換
+				if port.Host != 0 {
+					portString := fmt.Sprintf("%d:%d", port.Host, port.Container)
+					ports = append(ports, portString)
+				}
+			}
+			service["ports"] = ports
+		}
+
+		composeServices[serviceName] = service
+	}
+
+	result := map[string]interface{}{
+		"services": composeServices,
+	}
+
+	// バージョンは含めない（Docker Composeの警告を避けるため）
+	// メタデータも含めない（Docker Composeには不要）
+
+	return result
+}
+
+// generateOverrideYAML は!overrideタグ付きのYAMLを生成します。
+func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideConfig) string {
+	var builder strings.Builder
+
+	builder.WriteString("services:\n")
+
+	for serviceName, serviceOverride := range override.Services {
+		builder.WriteString(fmt.Sprintf("    %s:\n", serviceName))
+
+		if len(serviceOverride.Ports) > 0 {
+			builder.WriteString("        ports: !override\n")
+			for _, port := range serviceOverride.Ports {
+				if port.Host != 0 {
+					builder.WriteString(fmt.Sprintf("            - \"%d:%d\"\n", port.Host, port.Container))
+				}
+			}
+		}
+	}
+
+	return builder.String()
 }
 
 // generateFileHeader はファイルヘッダーコメントを生成します。
