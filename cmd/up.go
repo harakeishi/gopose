@@ -2,14 +2,22 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/harakeishi/gopose/internal/generator"
+	"github.com/harakeishi/gopose/internal/parser"
+	"github.com/harakeishi/gopose/internal/resolver"
+	"github.com/harakeishi/gopose/internal/scanner"
+	"github.com/harakeishi/gopose/pkg/types"
 	"github.com/spf13/cobra"
 )
 
 var (
-	filePath  string
-	portRange string
-	dryRun    bool
+	filePath   string
+	portRange  string
+	dryRun     bool
+	strategy   string
+	outputFile string
 )
 
 // upCmd はupコマンドを表します。
@@ -29,6 +37,9 @@ var upCmd = &cobra.Command{
   # ポート範囲を指定
   gopose up --port-range 9000-9999
 
+  # 解決戦略を指定
+  gopose up --strategy range
+
   # ドライラン（実際の変更は行わない）
   gopose up --dry-run`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,11 +51,120 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("ロガーの初期化に失敗しました: %w", err)
 		}
 
-		logger.Info(ctx, "gopose up コマンドを開始しています")
+		logger.Info(ctx, "ポート衝突解決を開始",
+			types.Field{Key: "dry_run", Value: dryRun},
+			types.Field{Key: "compose_file", Value: filePath},
+			types.Field{Key: "output_file", Value: outputFile},
+			types.Field{Key: "strategy", Value: strategy})
 
-		// TODO: 実際の実装をここに追加
-		fmt.Println("ポート衝突の検出と解決を実行中...")
-		fmt.Println("現在は実装中です。")
+		// Docker Composeファイルの自動検出（指定されていない場合）
+		if filePath == "" || filePath == "docker-compose.yml" {
+			wd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
+			}
+
+			detector := parser.NewComposeFileDetectorImpl(logger)
+			detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
+			if err != nil {
+				return fmt.Errorf("Docker Composeファイルの自動検出に失敗: %w", err)
+			}
+			filePath = detectedFile
+			logger.Info(ctx, "Docker Composeファイルを自動検出", types.Field{Key: "file", Value: filePath})
+		}
+
+		// Docker Composeファイルの解析
+		yamlParser := parser.NewYamlComposeParser(logger)
+		config, err := yamlParser.ParseComposeFile(ctx, filePath)
+		if err != nil {
+			return fmt.Errorf("Docker Composeファイルの解析に失敗: %w", err)
+		}
+
+		// ポートスキャンの実行
+		portDetector := scanner.NewNetstatPortDetector(logger)
+		portAllocator := scanner.NewPortAllocatorImpl(portDetector, logger)
+
+		// ポート衝突の検出
+		conflictDetector := resolver.NewConflictDetectorImpl(portDetector, logger)
+		conflicts, err := conflictDetector.DetectPortConflicts(ctx, config)
+		if err != nil {
+			return fmt.Errorf("ポート衝突の検出に失敗: %w", err)
+		}
+
+		logger.Info(ctx, "ポート衝突検出完了", types.Field{Key: "conflicts_count", Value: len(conflicts)})
+
+		if len(conflicts) == 0 {
+			logger.Info(ctx, "ポート衝突は検出されませんでした")
+			return nil
+		}
+
+		// 解決戦略の決定
+		resolutionStrategy := types.ResolutionStrategyAutoIncrement
+		switch strategy {
+		case "auto":
+			resolutionStrategy = types.ResolutionStrategyAutoIncrement
+		case "range":
+			resolutionStrategy = types.ResolutionStrategyRangeAllocation
+		case "user":
+			resolutionStrategy = types.ResolutionStrategyUserDefined
+		}
+
+		// ポート衝突の解決
+		conflictResolver := resolver.NewConflictResolverImpl(portAllocator, logger)
+		resolutions, err := conflictResolver.ResolvePortConflicts(ctx, conflicts, resolutionStrategy)
+		if err != nil {
+			return fmt.Errorf("ポート衝突の解決に失敗: %w", err)
+		}
+
+		// 解決案の最適化
+		analyzer := resolver.NewPortResolutionAnalyzerImpl(logger)
+		optimizedResolutions, err := analyzer.OptimizeResolutions(ctx, resolutions)
+		if err != nil {
+			return fmt.Errorf("解決案の最適化に失敗: %w", err)
+		}
+
+		// 解決結果の表示
+		logger.Info(ctx, "ポート衝突解決完了",
+			types.Field{Key: "resolved_conflicts", Value: len(optimizedResolutions)})
+
+		for _, resolution := range optimizedResolutions {
+			logger.Info(ctx, "ポート解決",
+				types.Field{Key: "service", Value: resolution.ServiceName},
+				types.Field{Key: "from", Value: resolution.ConflictPort},
+				types.Field{Key: "to", Value: resolution.ResolvedPort},
+				types.Field{Key: "reason", Value: resolution.Reason})
+		}
+
+		// ドライランモードの場合はここで終了
+		if dryRun {
+			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
+			return nil
+		}
+
+		// Override.ymlの生成
+		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
+		override, err := overrideGenerator.GenerateOverride(ctx, config, optimizedResolutions)
+		if err != nil {
+			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
+		}
+
+		// Override.ymlの妥当性検証
+		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
+			return fmt.Errorf("Overrideファイルの検証に失敗: %w", err)
+		}
+
+		// 出力ファイル名の決定
+		if outputFile == "" {
+			outputFile = "docker-compose.override.yml"
+		}
+
+		// Override.ymlファイルの書き込み
+		if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
+			return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+		}
+
+		logger.Info(ctx, "Override.ymlファイルが生成されました",
+			types.Field{Key: "output_file", Value: outputFile})
 
 		return nil
 	},
@@ -54,5 +174,7 @@ func init() {
 	// upコマンド固有のフラグを定義
 	upCmd.Flags().StringVarP(&filePath, "file", "f", "docker-compose.yml", "Docker Composeファイルのパス")
 	upCmd.Flags().StringVar(&portRange, "port-range", "", "利用するポート範囲 (例: 8000-9999)")
+	upCmd.Flags().StringVar(&strategy, "strategy", "auto", "解決戦略 (auto, range, user)")
+	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: docker-compose.override.yml)")
 	upCmd.Flags().BoolVar(&dryRun, "dry-run", false, "ドライラン（実際の変更は行わない）")
 }

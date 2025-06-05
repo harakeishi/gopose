@@ -5,6 +5,7 @@ import "time"
 // Service はDocker Composeサービスを表します。
 type Service struct {
 	Name        string            `yaml:"name" json:"name"`
+	Image       string            `yaml:"image" json:"image"`
 	Ports       []PortMapping     `yaml:"ports" json:"ports"`
 	DependsOn   []string          `yaml:"depends_on" json:"depends_on"`
 	Environment map[string]string `yaml:"environment" json:"environment"`
@@ -17,6 +18,7 @@ type ComposeConfig struct {
 	Services map[string]Service `yaml:"services" json:"services"`
 	Networks map[string]Network `yaml:"networks" json:"networks"`
 	Volumes  map[string]Volume  `yaml:"volumes" json:"volumes"`
+	FilePath string             `yaml:"-" json:"file_path"`
 }
 
 // Network はDocker Composeネットワーク設定を表します。

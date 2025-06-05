@@ -62,6 +62,7 @@ const (
 	ErrUnknown          ErrorCode = "UNKNOWN"
 	ErrInternalError    ErrorCode = "INTERNAL_ERROR"
 	ErrValidationFailed ErrorCode = "VALIDATION_FAILED"
+	ErrParseFailed      ErrorCode = "PARSE_FAILED"
 )
 
 // Category はエラーコードのカテゴリを返します。
