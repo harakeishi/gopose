@@ -10,7 +10,7 @@
 
 ## 概要
 
-**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突を自動検出・解決する革新的なツールです。
+**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突を自動検出・解決するツールです。
 
 元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突解決後、自動的に `override.yml` を削除します。
 
@@ -20,10 +20,10 @@
 - ✅ **自動検出**: システムの使用中ポートとの衝突を自動検出
 - ✅ **自動解決**: 利用可能なポートを自動割り当て
 - ✅ **自動クリーンアップ**: プロセス終了時に `override.yml` を自動削除
-- ✅ **SOLID原則**: 保守性・拡張性に優れた設計
+- ✅ **SOLID原則**: 保守性と拡張性を考慮した設計
 - ✅ **構造化ログ**: 詳細なログ出力とデバッグ機能
 - ✅ **クロスプラットフォーム**: Linux、macOS、Windows対応
-- ✅ **高性能**: 並列処理による高速ポートスキャン
+- ✅ **並列処理**: ポートスキャンを並列で実施
 
 ## インストール
 
@@ -177,7 +177,7 @@ resolver:
 ### 設計原則
 
 - **単一責任の原則 (SRP)**: 各コンポーネントが明確な単一責任を持つ
-- **開放閉鎖の原則 (OCP)**: インターフェースベースで拡張が容易
+- **開放閉鎖の原則 (OCP)**: インターフェースベースで拡張できる設計
 - **リスコフの置換原則 (LSP)**: 実装の置き換えが安全
 - **インターフェース分離の原則 (ISP)**: 小さく特化したインターフェース
 - **依存性逆転の原則 (DIP)**: Google Wireを使用した依存性注入
@@ -364,7 +364,7 @@ go test -run TestPortScanner ./internal/scanner/
 
 1. **フォーク**してローカルに開発環境を構築
 2. **機能ブランチ**を作成 (`git checkout -b feature/amazing-feature`)
-3. **変更をコミット** (`git commit -m 'feat: 素晴らしい機能を追加'`)
+3. **変更をコミット** (`git commit -m 'feat: 新しい機能を追加'`)
 4. **ブランチにプッシュ** (`git push origin feature/amazing-feature`)
 5. **プルリクエスト**を作成
 
@@ -414,7 +414,7 @@ go test -run TestPortScanner ./internal/scanner/
 
 - [ ] **Phase 4: CLI・UX改善**
   - [ ] Cobraベースのコマンドライン実装
-  - [ ] ユーザーフレンドリーなメッセージ出力
+  - [ ] ユーザー向けのメッセージ出力
   - [ ] プログレス表示機能
   - [ ] E2Eテストの作成
 
@@ -437,7 +437,7 @@ go test -run TestPortScanner ./internal/scanner/
 ---
 
 <div align="center">
-  <p>Made with ❤️ by <a href="https://github.com/harakeishi">harakeishi</a></p>
+  <p>Developed by <a href="https://github.com/harakeishi">harakeishi</a></p>
   <p>
     <a href="https://github.com/harakeishi/gopose/issues">🐛 バグ報告</a> •
     <a href="https://github.com/harakeishi/gopose/discussions">💬 ディスカッション</a> •
