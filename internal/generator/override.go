@@ -32,8 +32,10 @@ func (g *OverrideGeneratorImpl) GenerateOverride(ctx context.Context, config *ty
 		types.Field{Key: "resolutions_count", Value: len(resolutions)})
 
 	// OverrideConfigの基本構造を作成
+	// Docker Composeの最新バージョンではversionフィールドは非推奨のため、
+	// 元のファイルにバージョンが指定されていない場合は空のままにする
 	override := &types.OverrideConfig{
-		Version:  config.Version,
+		Version:  config.Version, // 空文字列でも許可
 		Services: make(map[string]types.ServiceOverride),
 		Metadata: types.OverrideMetadata{
 			GeneratedAt: time.Now(),
@@ -119,12 +121,9 @@ func (g *OverrideGeneratorImpl) WriteOverrideFile(ctx context.Context, override 
 func (g *OverrideGeneratorImpl) ValidateOverride(ctx context.Context, override *types.OverrideConfig) error {
 	g.logger.Debug(ctx, "Override検証開始")
 
-	// バージョン検証
+	// バージョン検証（Docker Composeの最新バージョンではversionフィールドは非推奨のため、空でも許可）
 	if override.Version == "" {
-		return &errors.AppError{
-			Code:    errors.ErrValidationFailed,
-			Message: "Overrideのバージョンが指定されていません",
-		}
+		g.logger.Debug(ctx, "Overrideのバージョンが指定されていませんが、Docker Composeの最新バージョンでは非推奨のため許可します")
 	}
 
 	// サービス数の検証
