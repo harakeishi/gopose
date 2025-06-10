@@ -17,6 +17,7 @@ import (
 var (
 	cfgFile string
 	verbose bool
+	detail  bool
 )
 
 // rootCmd はルートコマンドを表します。
@@ -54,6 +55,7 @@ func init() {
 	// グローバルフラグの定義
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "設定ファイルのパス (デフォルト: $HOME/.gopose.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "詳細ログ出力")
+	rootCmd.PersistentFlags().BoolVar(&detail, "detail", false, "ログの詳細情報を表示")
 
 	// 各サブコマンドをルートコマンドに追加
 	rootCmd.AddCommand(upCmd)
@@ -108,6 +110,6 @@ func getConfig() types.Config {
 
 // getLogger はロガーを取得します。
 func getLogger(cfg types.Config) (logger.Logger, error) {
-	factory := logger.NewStructuredLoggerFactory()
+	factory := logger.NewStructuredLoggerFactory(detail)
 	return factory.Create(cfg.GetLog())
 }

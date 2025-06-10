@@ -14,17 +14,21 @@ import (
 
 // StructuredLogger は構造化ログの実装です。
 type StructuredLogger struct {
-	logger *slog.Logger
-	fields []types.Field
-	err    error
+	logger   *slog.Logger
+	fields   []types.Field
+	err      error
+	detailed bool
 }
 
 // StructuredLoggerFactory は構造化ログのファクトリです。
-type StructuredLoggerFactory struct{}
+type StructuredLoggerFactory struct {
+	detailed bool
+}
 
 // NewStructuredLoggerFactory は新しいファクトリを作成します。
-func NewStructuredLoggerFactory() *StructuredLoggerFactory {
-	return &StructuredLoggerFactory{}
+// detailed が false の場合、ログ出力はメッセージのみとなります。
+func NewStructuredLoggerFactory(detailed bool) *StructuredLoggerFactory {
+	return &StructuredLoggerFactory{detailed: detailed}
 }
 
 // Create は設定に基づいてロガーを作成します。
@@ -63,8 +67,9 @@ func (f *StructuredLoggerFactory) CreateWithName(name string, config types.LogCo
 	logger := slog.New(handler).With("component", name)
 
 	return &StructuredLogger{
-		logger: logger,
-		fields: []types.Field{},
+		logger:   logger,
+		fields:   []types.Field{},
+		detailed: f.detailed,
 	}, nil
 }
 
@@ -149,6 +154,11 @@ func (l *StructuredLogger) WithError(err error) Logger {
 
 // log は実際のログ出力を行います。
 func (l *StructuredLogger) log(ctx context.Context, level slog.Level, message string, fields ...types.Field) {
+	if !l.detailed {
+		fmt.Println(message)
+		return
+	}
+
 	// コンテキストから追加情報を取得
 	attrs := make([]slog.Attr, 0)
 

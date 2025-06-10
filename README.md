@@ -101,6 +101,9 @@ gopose up --dry-run
 # 詳細ログ出力
 gopose up --verbose
 
+# 詳細情報を含めて表示
+gopose up --detail # タイムスタンプやフィールドを含めて表示
+
 # JSON形式で状態確認
 gopose status --output json
 
