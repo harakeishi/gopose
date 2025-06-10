@@ -27,6 +27,12 @@
 
 ## インストール
 
+### go install
+
+```bash
+go install github.com/harakeishi/gopose@latest
+```
+
 ### ソースからビルド
 
 ```bash
