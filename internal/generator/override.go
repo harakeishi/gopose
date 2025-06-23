@@ -290,6 +290,25 @@ func (g *OverrideGeneratorImpl) convertToComposeFormat(override *types.OverrideC
 		"services": composeServices,
 	}
 
+	// ネットワークオーバーライドを追加
+	if len(override.Networks) > 0 {
+		composeNetworks := make(map[string]interface{})
+		for netName, netOverride := range override.Networks {
+			net := make(map[string]interface{})
+			if len(netOverride.IPAM.Config) > 0 {
+				ipam := make(map[string]interface{})
+				configs := make([]map[string]string, 0, len(netOverride.IPAM.Config))
+				for _, cfg := range netOverride.IPAM.Config {
+					configs = append(configs, map[string]string{"subnet": cfg.Subnet})
+				}
+				ipam["config"] = configs
+				net["ipam"] = ipam
+			}
+			composeNetworks[netName] = net
+		}
+		result["networks"] = composeNetworks
+	}
+
 	// バージョンは含めない（Docker Composeの警告を避けるため）
 	// メタデータも含めない（Docker Composeには不要）
 
@@ -310,6 +329,20 @@ func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideCon
 			for _, port := range serviceOverride.Ports {
 				if port.Host != 0 {
 					builder.WriteString(fmt.Sprintf("            - \"%d:%d\"\n", port.Host, port.Container))
+				}
+			}
+		}
+	}
+
+	if len(override.Networks) > 0 {
+		builder.WriteString("networks:\n")
+		for netName, netOverride := range override.Networks {
+			builder.WriteString(fmt.Sprintf("    %s:\n", netName))
+			if len(netOverride.IPAM.Config) > 0 {
+				builder.WriteString("        ipam:\n")
+				builder.WriteString("            config:\n")
+				for _, cfg := range netOverride.IPAM.Config {
+					builder.WriteString(fmt.Sprintf("                - subnet: \"%s\"\n", cfg.Subnet))
 				}
 			}
 		}

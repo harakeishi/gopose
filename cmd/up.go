@@ -223,6 +223,31 @@ func stopExistingContainers(ctx context.Context, composeFile string) error {
 	return cmd.Run()
 }
 
+// detectNetworkSubnets collects all subnets configured in Compose file
+func getComposeSubnets(config *types.ComposeConfig) map[string]string {
+	result := make(map[string]string)
+	for name, netCfg := range config.Networks {
+		for _, ipCfg := range netCfg.IPAM.Config {
+			if ipCfg.Subnet != "" {
+				result[name] = ipCfg.Subnet
+				break
+			}
+		}
+	}
+	return result
+}
+
+// allocateNewSubnet returns first /16 subnet in 172.30.0.0/16 .. 172.99.0.0/16 not in used set
+func allocateNewSubnet(used map[string]bool) string {
+	for i := 30; i < 100; i++ {
+		candidate := fmt.Sprintf("172.%d.0.0/16", i)
+		if !used[candidate] {
+			return candidate
+		}
+	}
+	return ""
+}
+
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
 	Use:   "up [docker-compose-options...]",
@@ -376,6 +401,47 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
 		}
 
+		// ---------------- Network conflict detection -----------------
+
+		networkDetector := scanner.NewDockerNetworkDetector(logger)
+		dockerNets, _ := networkDetector.DetectNetworks(ctx)
+
+		usedSubnets := make(map[string]bool)
+		for _, n := range dockerNets {
+			for _, s := range n.Subnets {
+				usedSubnets[s] = true
+			}
+		}
+
+		composeSubnets := getComposeSubnets(config)
+		networkOverrides := make(map[string]types.NetworkOverride)
+
+		for netName, subnet := range composeSubnets {
+			if subnet == "" {
+				continue
+			}
+			if usedSubnets[subnet] {
+				// conflict detected
+				newSubnet := allocateNewSubnet(usedSubnets)
+				if newSubnet == "" {
+					logger.Warn(ctx, "利用可能なサブネットが見つかりません", types.Field{Key: "network", Value: netName})
+					continue
+				}
+				usedSubnets[newSubnet] = true
+
+				networkOverrides[netName] = types.NetworkOverride{
+					IPAM: types.IPAM{
+						Config: []types.IPAMConfig{{Subnet: newSubnet}},
+					},
+				}
+
+				logger.Info(ctx, "ネットワークサブネットを変更",
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "from", Value: subnet},
+					types.Field{Key: "to", Value: newSubnet})
+			}
+		}
+
 		// Override.ymlの妥当性検証
 		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
 			return fmt.Errorf("Overrideファイルの検証に失敗: %w", err)
@@ -384,6 +450,16 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 		// 出力ファイル名の決定
 		if outputFile == "" {
 			outputFile = "docker-compose.override.yml"
+		}
+
+		// ネットワークオーバーライドを追加
+		if len(networkOverrides) > 0 {
+			if override.Networks == nil {
+				override.Networks = make(map[string]types.NetworkOverride)
+			}
+			for k, v := range networkOverrides {
+				override.Networks[k] = v
+			}
 		}
 
 		// Override.ymlファイルの書き込み

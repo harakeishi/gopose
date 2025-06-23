@@ -51,6 +51,7 @@ type Volume struct {
 type OverrideConfig struct {
 	Version  string                     `yaml:"version" json:"version"`
 	Services map[string]ServiceOverride `yaml:"services" json:"services"`
+	Networks map[string]NetworkOverride `yaml:"networks,omitempty" json:"networks,omitempty"`
 	Metadata OverrideMetadata           `yaml:"x-gopose-metadata" json:"metadata"`
 }
 
@@ -64,4 +65,12 @@ type OverrideMetadata struct {
 	GeneratedAt time.Time            `yaml:"generated_at" json:"generated_at"`
 	Version     string               `yaml:"version" json:"version"`
 	Resolutions []ConflictResolution `yaml:"resolutions" json:"resolutions"`
+}
+
+// NetworkOverride はネットワーク設定のオーバーライドを表します。
+// 現状は subnet だけを上書き対象とする。
+type NetworkOverride struct {
+	Driver string            `yaml:"driver,omitempty" json:"driver,omitempty"`
+	IPAM   IPAM              `yaml:"ipam,omitempty" json:"ipam,omitempty"`
+	Labels map[string]string `yaml:"labels,omitempty" json:"labels,omitempty"`
 }
