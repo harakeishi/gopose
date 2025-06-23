@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -76,6 +77,24 @@ func createPortConfig(portRangeStr string) (types.PortConfig, error) {
 		Reserved:          []int{}, // 予約済みポートは空で開始
 		ExcludePrivileged: true,    // 特権ポートは除外
 	}, nil
+}
+
+// detectWorktreeProjectName は現在の git ワークツリーのトップレベルディレクトリ名を
+// 取得して返します。git リポジトリ外で実行された場合や git コマンドが利用できない場合は
+// 空文字列を返します。
+func detectWorktreeProjectName() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	topLevel := strings.TrimSpace(string(output))
+	if topLevel == "" {
+		return "", nil
+	}
+
+	return filepath.Base(topLevel), nil
 }
 
 // runDockerCompose はdocker composeコマンドを実行します。
@@ -188,6 +207,11 @@ func stopExistingContainers(ctx context.Context, composeFile string) error {
 		args = append(args, "-f", composeFile)
 	}
 
+	// プロジェクト名が指定されている場合は追加
+	if composeProjectName != "" {
+		args = append(args, "-p", composeProjectName)
+	}
+
 	// downコマンドを追加（コンテナを停止・削除）
 	args = append(args, "down")
 
@@ -238,10 +262,20 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 			return fmt.Errorf("ポート範囲の解析に失敗しました: %w", err)
 		}
 
+		// -p オプションが指定されていない場合は、ワークツリー名をプロジェクト名として自動設定
+		if composeProjectName == "" && os.Getenv("COMPOSE_PROJECT_NAME") == "" {
+			if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
+				composeProjectName = pn
+				logger.Info(ctx, "ワークツリー名をプロジェクト名として使用",
+					types.Field{Key: "project_name", Value: composeProjectName})
+			}
+		}
+
 		logger.Info(ctx, "ポート衝突解決を開始",
 			types.Field{Key: "dry_run", Value: dryRun},
 			types.Field{Key: "compose_file", Value: filePath},
 			types.Field{Key: "output_file", Value: outputFile},
+			types.Field{Key: "project_name", Value: composeProjectName},
 			types.Field{Key: "strategy", Value: strategy},
 			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)},
 			types.Field{Key: "skip_compose_up", Value: skipComposeUp})
