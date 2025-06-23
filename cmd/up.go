@@ -207,6 +207,11 @@ func stopExistingContainers(ctx context.Context, composeFile string) error {
 		args = append(args, "-f", composeFile)
 	}
 
+	// プロジェクト名が指定されている場合は追加
+	if composeProjectName != "" {
+		args = append(args, "-p", composeProjectName)
+	}
+
 	// downコマンドを追加（コンテナを停止・削除）
 	args = append(args, "down")
 
