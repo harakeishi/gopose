@@ -146,25 +146,6 @@ homebrew_casks:
     description: "Go Port Override Solution Engine - Docker Compose port conflict resolver"
     license: "MIT"
 
-# Snapcraft
-snapcrafts:
-  - id: gopose
-    ids:
-      - gopose
-    name: gopose
-    title: gopose
-    summary: Docker Compose port conflict resolver
-    description: |
-      gopose is a Go-based tool that automatically detects and resolves 
-      Docker Compose port conflicts by generating override files.
-    grade: stable
-    confinement: strict
-    license: MIT
-    base: core22
-    apps:
-      gopose:
-        command: gopose
-        plugs: ["home", "network"]
 
 # Docker images
 dockers:
