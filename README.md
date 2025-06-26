@@ -28,32 +28,6 @@
 
 ## インストール
 
-### パッケージマネージャー経由
-
-#### Homebrew (macOS/Linux)
-
-```bash
-brew install harakeishi/tap/gopose
-```
-
-#### Scoop (Windows)
-
-```bash
-scoop bucket add harakeishi https://github.com/harakeishi/scoop-bucket
-scoop install gopose
-```
-
-#### APT (Debian/Ubuntu)
-
-```bash
-curl -s https://api.github.com/repos/harakeishi/gopose/releases/latest \
-| grep "browser_download_url.*amd64.deb" \
-| cut -d : -f 2,3 \
-| tr -d \" \
-| wget -qi -
-sudo dpkg -i gopose_*_amd64.deb
-```
-
 ### バイナリリリース
 
 [GitHub Releases](https://github.com/harakeishi/gopose/releases) から適切なバイナリをダウンロード:
@@ -70,16 +44,6 @@ sudo mv gopose /usr/local/bin/
 # Windows (amd64)
 curl -L https://github.com/harakeishi/gopose/releases/latest/download/gopose_windows_amd64.zip -o gopose.zip
 unzip gopose.zip
-```
-
-### Docker
-
-```bash
-# Docker Hubから
-docker pull ghcr.io/harakeishi/gopose:latest
-
-# 使用例
-docker run --rm -v $(pwd):/workspace ghcr.io/harakeishi/gopose:latest up
 ```
 
 ### Go Install
