@@ -1,0 +1,260 @@
+version: 2
+project_name: gopose
+env:
+  - GO111MODULE=on
+release:
+  github:
+    owner: harakeishi
+    name: gopose
+  prerelease: auto
+  name_template: '{{.ProjectName}}-v{{.Version}}'
+  header: |
+    ## Changes
+
+    Welcome to this new release of gopose!
+  footer: |
+    ## Docker
+
+    You can also run gopose using Docker:
+
+    ```bash
+    docker run --rm -v $(pwd):/workspace ghcr.io/harakeishi/gopose:{{ .Tag }} up
+    ```
+  mode: replace
+homebrew_casks:
+  - name: gopose
+    repository:
+      owner: harakeishi
+      name: homebrew-tap
+      branch: main
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: Brew cask update for {{ .ProjectName }} version {{ .Tag }}
+    directory: Casks
+    description: Go Port Override Solution Engine - Docker Compose port conflict resolver
+    homepage: https://github.com/harakeishi/gopose
+    license: MIT
+    binary: gopose
+builds:
+  - id: gopose
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+    goamd64:
+      - v1
+    go386:
+      - sse2
+    goarm:
+      - "7"
+    goarm64:
+      - v8.0
+    gomips:
+      - hardfloat
+    goppc64:
+      - power8
+    goriscv64:
+      - rva20u64
+    targets:
+      - linux_amd64_v1
+      - linux_arm64_v8.0
+      - linux_386_sse2
+      - darwin_amd64_v1
+      - darwin_arm64_v8.0
+      - windows_amd64_v1
+      - windows_386_sse2
+    ignore:
+      - goos: windows
+        goarch: arm64
+    dir: .
+    main: ./main.go
+    binary: gopose
+    builder: go
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    tool: go
+    command: build
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.CommitDate}}
+      - -X main.builtBy=goreleaser
+      - -X main.treeState={{ .IsGitDirty }}
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=0
+archives:
+  - id: gopose
+    ids:
+      - gopose
+    builds_info:
+      mode: 493
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - src: README.md
+      - src: LICENSE*
+      - src: CHANGELOG*
+snapcrafts:
+  - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    id: gopose
+    ids:
+      - gopose
+    name: gopose
+    title: gopose
+    summary: Docker Compose port conflict resolver
+    description: "gopose is a Go-based tool that automatically detects and resolves \nDocker Compose port conflicts by generating override files.\n"
+    base: core22
+    license: MIT
+    grade: stable
+    channel_templates:
+      - edge
+      - beta
+      - candidate
+      - stable
+    confinement: strict
+    apps:
+      gopose:
+        command: gopose
+        plugs:
+          - home
+          - network
+snapshot:
+  version_template: '{{ incpatch .Version }}-next'
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+dockers:
+  - goos: linux
+    goarch: amd64
+    goarm: "6"
+    goamd64: v1
+    dockerfile: |
+      FROM alpine:3.19
+      RUN apk add --no-cache ca-certificates tzdata
+      COPY gopose /usr/local/bin/
+      WORKDIR /workspace
+      ENTRYPOINT ["/usr/local/bin/gopose"]
+    image_templates:
+      - ghcr.io/harakeishi/gopose:latest
+      - ghcr.io/harakeishi/gopose:{{ .Tag }}
+      - ghcr.io/harakeishi/gopose:v{{ .Major }}
+      - ghcr.io/harakeishi/gopose:v{{ .Major }}.{{ .Minor }}
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description=Docker Compose port conflict resolver
+      - --label=org.opencontainers.image.url=https://github.com/harakeishi/gopose
+      - --label=org.opencontainers.image.source=https://github.com/harakeishi/gopose
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.licenses=MIT
+    use: docker
+changelog:
+  filters:
+    exclude:
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - merge conflict
+      - Merge pull request
+  sort: asc
+  use: github
+  format: '{{ .SHA }}: {{ .Message }} ({{ with .AuthorUsername }}@{{ . }}{{ else }}{{ .AuthorName }} <{{ .AuthorEmail }}>{{ end }})'
+  groups:
+    - title: "\U0001F680 Features"
+      regexp: ^.*?feat(\([[:word:]]+\))??!?:.+$
+    - title: "\U0001F41B Bug Fixes"
+      regexp: ^.*?fix(\([[:word:]]+\))??!?:.+$
+      order: 1
+    - title: "\U0001F4DA Documentation"
+      regexp: ^.*?docs(\([[:word:]]+\))??!?:.+$
+      order: 2
+    - title: "\U0001F527 Other Changes"
+      order: 999
+dist: dist
+env_files:
+  github_token: ~/.config/goreleaser/github_token
+  gitlab_token: ~/.config/goreleaser/gitlab_token
+  gitea_token: ~/.config/goreleaser/gitea_token
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+source:
+  name_template: '{{ .ProjectName }}-{{ .Version }}'
+  format: tar.gz
+gomod:
+  proxy: true
+  gobinary: go
+announce:
+  skip: '{{gt .Patch 0}}'
+  twitter:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+  mastodon:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    server: ""
+  reddit:
+    title_template: '{{ .ProjectName }} {{ .Tag }} is out!'
+    url_template: '{{ .ReleaseURL }}'
+  slack:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    username: GoReleaser
+  discord:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    author: GoReleaser
+    color: "3888754"
+    icon_url: https://goreleaser.com/static/avatar.png
+  teams:
+    title_template: '{{ .ProjectName }} {{ .Tag }} is out!'
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    color: '#2D313E'
+    icon_url: https://goreleaser.com/static/avatar.png
+  smtp:
+    subject_template: '{{ .ProjectName }} {{ .Tag }} is out!'
+    body_template: 'You can view details from: {{ .ReleaseURL }}'
+  mattermost:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    title_template: '{{ .ProjectName }} {{ .Tag }} is out!'
+    username: GoReleaser
+  linkedin:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+  telegram:
+    message_template: '{{ mdv2escape .ProjectName }} {{ mdv2escape .Tag }} is out{{ mdv2escape "!" }} Check it out at {{ mdv2escape .ReleaseURL }}'
+    parse_mode: MarkdownV2
+  webhook:
+    message_template: '{ "message": "{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}"}'
+    content_type: application/json; charset=utf-8
+    expected_status_codes:
+      - 200
+      - 201
+      - 202
+      - 204
+  opencollective:
+    title_template: '{{ .Tag }}'
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out!<br/>Check it out at <a href="{{ .ReleaseURL }}">{{ .ReleaseURL }}</a>'
+  bluesky:
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+git:
+  tag_sort: -version:refname
+  ignore_tags:
+    - '{{ if not .IsNightly }}nightly{{ end }}'
+report_sizes: true
+metadata:
+  mod_timestamp: "1750917244"
+github_urls:
+  download: https://github.com
+gitlab_urls:
+  download: https://gitlab.com
