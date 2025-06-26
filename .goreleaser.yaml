@@ -126,50 +126,12 @@ release:
     Welcome to this new release of gopose!
 
   footer: |
-    ## Docker
+    ## Installation
 
-    You can also run gopose using Docker:
-
-    ```bash
-    docker run --rm -v $(pwd):/workspace ghcr.io/harakeishi/gopose:{{ .Tag }} up
-    ```
+    Download the appropriate binary for your platform from the assets below.
 
   name_template: "{{.ProjectName}}-v{{.Version}}"
 
-# Homebrew casks (updated for v2)
-homebrew_casks:
-  - repository:
-      owner: harakeishi
-      name: homebrew-tap
-      branch: main
-    homepage: https://github.com/harakeishi/gopose
-    description: "Go Port Override Solution Engine - Docker Compose port conflict resolver"
-    license: "MIT"
-
-
-# Docker images
-dockers:
-  - image_templates:
-      - "ghcr.io/harakeishi/gopose:latest"
-      - "ghcr.io/harakeishi/gopose:{{ .Tag }}"
-      - "ghcr.io/harakeishi/gopose:v{{ .Major }}"
-      - "ghcr.io/harakeishi/gopose:v{{ .Major }}.{{ .Minor }}"
-    dockerfile: |
-      FROM alpine:3.19
-      RUN apk add --no-cache ca-certificates tzdata
-      COPY gopose /usr/local/bin/
-      WORKDIR /workspace
-      ENTRYPOINT ["/usr/local/bin/gopose"]
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.description=Docker Compose port conflict resolver"
-      - "--label=org.opencontainers.image.url=https://github.com/harakeishi/gopose"
-      - "--label=org.opencontainers.image.source=https://github.com/harakeishi/gopose"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.licenses=MIT"
 
 # Announcement
 announce:
