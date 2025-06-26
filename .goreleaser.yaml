@@ -1,9 +1,41 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=jcroql
 # GoReleaser configuration for gopose
 # https://goreleaser.com/customization/
 
-version: 1
+version: 2
 
 project_name: gopose
+
+# Global environment
+env:
+  - GO111MODULE=on
+
+# Pre-build hooks
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+# Snapshot version template
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# Go modules proxy
+gomod:
+  proxy: true
+
+# Report binary sizes
+report_sizes: true
+
+# Git configuration
+git:
+  ignore_tags:
+    - "{{ if not .IsNightly }}nightly{{ end }}"
+
+# Metadata configuration
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
 
 # Build configuration
 builds:
@@ -17,6 +49,9 @@ builds:
     goarch:
       - amd64
       - arm64
+      - "386"
+    goarm:
+      - "7"
     ignore:
       - goos: windows
         goarch: arm64
@@ -28,18 +63,20 @@ builds:
       - -s -w
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
-      - -X main.date={{.Date}}
+      - -X main.date={{.CommitDate}}
+      - -X main.builtBy=goreleaser
+      - -X main.treeState={{ .IsGitDirty }}
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 # Archive configuration
 archives:
   - id: gopose
-    builds:
+    ids:
       - gopose
-    format: tar.gz
+    formats: ['tar.gz']
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
@@ -99,8 +136,8 @@ release:
 
   name_template: "{{.ProjectName}}-v{{.Version}}"
 
-# Homebrew tap
-brews:
+# Homebrew casks (updated for v2)
+homebrew_casks:
   - repository:
       owner: harakeishi
       name: homebrew-tap
@@ -108,20 +145,11 @@ brews:
     homepage: https://github.com/harakeishi/gopose
     description: "Go Port Override Solution Engine - Docker Compose port conflict resolver"
     license: "MIT"
-    test: |
-      system "#{bin}/gopose", "--version"
-    dependencies:
-      - name: docker
-        type: optional
-      - name: docker-compose
-        type: optional
-    install: |
-      bin.install "gopose"
 
 # Snapcraft
 snapcrafts:
   - id: gopose
-    builds:
+    ids:
       - gopose
     name: gopose
     title: gopose
