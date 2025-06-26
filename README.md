@@ -10,15 +10,16 @@
 
 ## 概要
 
-**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突を自動検出・解決するツールです。
+**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突とネットワーク衝突を自動検出・解決するツールです。
 
-元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突解決後、自動的に `override.yml` を削除します。
+元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突・ネットワーク衝突解決後、自動的に `override.yml` を削除します。
 
 ### 🎯 主な特徴
 
 - ✅ **非破壊的**: 元の `docker-compose.yml` ファイルを変更しません
 - ✅ **自動検出**: システムの使用中ポートとの衝突を自動検出
 - ✅ **自動解決**: 利用可能なポートを自動割り当て
+- ✅ **ネットワーク衝突回避**: Dockerネットワークのサブネット衝突を自動検出・回避
 - ✅ **自動クリーンアップ**: プロセス終了時に `override.yml` を自動削除
 - ✅ **SOLID原則**: 保守性と拡張性を考慮した設計
 - ✅ **構造化ログ**: 詳細なログ出力とデバッグ機能
@@ -101,7 +102,7 @@ sudo make install
 ### 基本的な使用方法
 
 ```bash
-# ポート衝突を検出・解決してDocker Composeを準備
+# ポート衝突・ネットワーク衝突を検出・解決してDocker Composeを準備
 gopose up
 
 ```
@@ -221,6 +222,10 @@ Override検証完了
 Overrideファイル書き込み開始
 Overrideファイル書き込み完了
 Override.ymlファイルが生成されました
+既存Dockerネットワークを検出しました
+Docker Composeネットワーク設定を検出
+ネットワークサブネット競合を検出
+ネットワークサブネット競合を解決
 既存のコンテナを停止してからDocker Composeを起動
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.0s
@@ -233,7 +238,7 @@ Docker Composeを実行
 Attaching to web-1
 ```
 
-detail指定時
+#### detail指定時
 
 ```
 $ gopose up --detail
@@ -250,6 +255,10 @@ time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポートスキャン完了 co
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=解決案最適化完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 original_count=1 optimized_count=1
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート衝突解決完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 resolved_conflicts=1
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート解決 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 service=web from=3000 to=8001 reason="ポート 3000 から 8001 への自動変更"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="既存Dockerネットワークを検出しました" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=3
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Docker Composeネットワーク設定を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=1
+time=2025-06-10T23:31:03.205+09:00 level=WARN msg="ネットワークサブネット競合を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default conflicting_subnet="172.20.0.0/24"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="ネットワークサブネット競合を解決" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override生成完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override検証完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Overrideファイル書き込み完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
@@ -264,6 +273,41 @@ time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" comp
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
 Attaching to web-1
+```
+
+## ネットワーク衝突回避機能
+
+goposeは既存のDockerネットワークとのサブネット衝突を自動検出し、安全な代替サブネットを割り当てます。
+
+### 機能概要
+
+- **自動検出**: 既存のDockerネットワークサブネットを自動検出
+- **衝突回避**: Docker Composeで定義されたネットワークのサブネットが既存ネットワークと衝突する場合、安全な代替サブネットを自動生成
+- **優先順位**: `10.x.x.x/24` > `192.168.x.x/24` > `172.x.x.x/24` の順で安全なサブネットを選択
+- **競合回避**: Dockerのデフォルト範囲（`172.17-29.x.x`）や一般的なホームルーター範囲を回避
+
+### サブネット割り当て戦略
+
+1. **10.x.x.x/24 範囲**: 最も安全（`10.20.0.0/24` から開始）
+2. **192.168.x.x/24 範囲**: 一般的なホームルーター範囲を回避（`192.168.100.0/24` から開始）
+3. **172.x.x.x/24 範囲**: 最後の手段（`172.30.0.0/24` から開始、Dockerデフォルト範囲を回避）
+
+### 動作例
+
+```yaml
+# 元のdocker-compose.yml
+networks:
+  app-network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24  # 他のDockerネットワークと衝突
+
+# 生成されるdocker-compose.override.yml
+networks:
+  app-network:
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24  # 安全なサブネットに自動変更
 ```
 
 ## ディレクトリ構造

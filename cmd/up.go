@@ -274,11 +274,11 @@ func allocateNewSubnet(used map[string]bool) string {
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
 	Use:   "up [docker-compose-options...]",
-	Short: "ポート衝突を解決してDocker Composeを起動",
-	Long: `Docker Composeのポートバインディング衝突を検出・解決し、docker-compose.override.yml を生成後、
+	Short: "ポート衝突・ネットワーク衝突を解決してDocker Composeを起動",
+	Long: `Docker Composeのポートバインディング衝突とネットワークサブネット衝突を検出・解決し、docker-compose.override.yml を生成後、
 Docker Composeを起動します。
 
-docker composeコマンドのラッパーとして動作し、ポート衝突の自動解決機能を提供します。
+docker composeコマンドのラッパーとして動作し、ポート衝突・ネットワーク衝突の自動解決機能を提供します。
 -- 以降のオプションはdocker composeコマンドにそのまま渡されます。`,
 	Example: `  # 基本的な使用方法
   gopose up
@@ -294,7 +294,10 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
   gopose up -- --scale web=3
 
   # ドライラン（override.ymlの生成のみ）
-  gopose up --dry-run`,
+  gopose up --dry-run
+  
+  # ネットワーク衝突も含めて解決
+  gopose up --verbose  # ネットワーク衝突の詳細ログを表示`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		cfg := getConfig()
