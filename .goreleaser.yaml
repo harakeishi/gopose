@@ -1,0 +1,176 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=jcroql
+# GoReleaser configuration for gopose
+# https://goreleaser.com/customization/
+
+version: 2
+
+project_name: gopose
+
+# Global environment
+env:
+  - GO111MODULE=on
+
+# Pre-build hooks
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+# Snapshot version template
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# Go modules proxy
+gomod:
+  proxy: true
+
+# Report binary sizes
+report_sizes: true
+
+# Git configuration
+git:
+  ignore_tags:
+    - "{{ if not .IsNightly }}nightly{{ end }}"
+
+# Metadata configuration
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+# Build configuration
+builds:
+  - id: gopose
+    binary: gopose
+    main: ./main.go
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.CommitDate}}
+      - -X main.builtBy=goreleaser
+      - -X main.treeState={{ .IsGitDirty }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+# Archive configuration
+archives:
+  - id: gopose
+    ids:
+      - gopose
+    formats: ['tar.gz']
+    format_overrides:
+      - goos: windows
+        formats: ['zip']
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+      - CHANGELOG*
+
+# Checksum configuration
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+# Changelog configuration
+changelog:
+  use: github
+  sort: asc
+  abbrev: 0
+  groups:
+    - title: "🚀 Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "📚 Documentation"
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "🔧 Other Changes"
+      order: 999
+  filters:
+    exclude:
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - merge conflict
+      - Merge pull request
+
+# Release configuration
+release:
+  github:
+    owner: harakeishi
+    name: gopose
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Changes
+
+    Welcome to this new release of gopose!
+
+  footer: |
+    ## Docker
+
+    You can also run gopose using Docker:
+
+    ```bash
+    docker run --rm -v $(pwd):/workspace ghcr.io/harakeishi/gopose:{{ .Tag }} up
+    ```
+
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+
+# Homebrew casks (updated for v2)
+homebrew_casks:
+  - repository:
+      owner: harakeishi
+      name: homebrew-tap
+      branch: main
+    homepage: https://github.com/harakeishi/gopose
+    description: "Go Port Override Solution Engine - Docker Compose port conflict resolver"
+    license: "MIT"
+
+
+# Docker images
+dockers:
+  - image_templates:
+      - "ghcr.io/harakeishi/gopose:latest"
+      - "ghcr.io/harakeishi/gopose:{{ .Tag }}"
+      - "ghcr.io/harakeishi/gopose:v{{ .Major }}"
+      - "ghcr.io/harakeishi/gopose:v{{ .Major }}.{{ .Minor }}"
+    dockerfile: |
+      FROM alpine:3.19
+      RUN apk add --no-cache ca-certificates tzdata
+      COPY gopose /usr/local/bin/
+      WORKDIR /workspace
+      ENTRYPOINT ["/usr/local/bin/gopose"]
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.description=Docker Compose port conflict resolver"
+      - "--label=org.opencontainers.image.url=https://github.com/harakeishi/gopose"
+      - "--label=org.opencontainers.image.source=https://github.com/harakeishi/gopose"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+# Announcement
+announce:
+  skip: "{{gt .Patch 0}}"
