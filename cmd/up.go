@@ -222,14 +222,63 @@ func stopExistingContainers(ctx context.Context, composeFile string) error {
 	return cmd.Run()
 }
 
+// detectNetworkSubnets collects all subnets configured in Compose file
+func getComposeSubnets(config *types.ComposeConfig) map[string]string {
+	result := make(map[string]string)
+	for name, netCfg := range config.Networks {
+		for _, ipCfg := range netCfg.IPAM.Config {
+			if ipCfg.Subnet != "" {
+				result[name] = ipCfg.Subnet
+				break
+			}
+		}
+	}
+	return result
+}
+
+// allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
+func allocateNewSubnet(used map[string]bool) string {
+	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
+	
+	// 1. Try 10.x.x.x/24 range (safe for most environments)
+	for i := 20; i < 255; i++ { // Skip common ranges like 10.0.x.x, 10.1.x.x
+		for j := 0; j < 255; j++ {
+			candidate := fmt.Sprintf("10.%d.%d.0/24", i, j)
+			if !used[candidate] {
+				return candidate
+			}
+		}
+	}
+	
+	// 2. Try 192.168.x.x/24 range (commonly used but safer than 172.x.x.x)
+	for i := 100; i < 255; i++ { // Skip common home router ranges
+		candidate := fmt.Sprintf("192.168.%d.0/24", i)
+		if !used[candidate] {
+			return candidate
+		}
+	}
+	
+	// 3. Try 172.x.x.x/24 range (last resort, more likely to conflict)
+	for i := 30; i < 100; i++ { // Skip Docker's default range 172.17-29.x.x
+		for j := 0; j < 255; j++ {
+			candidate := fmt.Sprintf("172.%d.%d.0/24", i, j)
+			if !used[candidate] {
+				return candidate
+			}
+		}
+	}
+	
+	return "" // No available subnet found
+}
+
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
 	Use:   "up [docker-compose-options...]",
-	Short: "ポート衝突を解決してDocker Composeを起動",
-	Long: `Docker Composeのポートバインディング衝突を検出・解決し、docker-compose.override.yml を生成後、
+	Short: "ポート衝突・ネットワーク衝突を解決してDocker Composeを起動",
+	Long: `Docker Composeのポートバインディング衝突とネットワークサブネット衝突を検出・解決し、docker-compose.override.yml を生成後、
 Docker Composeを起動します。
 
-docker composeコマンドのラッパーとして動作し、ポート衝突の自動解決機能を提供します。
+docker composeコマンドのラッパーとして動作し、ポート衝突・ネットワーク衝突の自動解決機能を提供します。
 -- 以降のオプションはdocker composeコマンドにそのまま渡されます。`,
 	Example: `  # 基本的な使用方法
   gopose up
@@ -245,7 +294,10 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
   gopose up -- --scale web=3
 
   # ドライラン（override.ymlの生成のみ）
-  gopose up --dry-run`,
+  gopose up --dry-run
+  
+  # ネットワーク衝突も含めて解決
+  gopose up --verbose  # ネットワーク衝突の詳細ログを表示`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		cfg := getConfig()
@@ -362,17 +414,84 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 				types.Field{Key: "reason", Value: resolution.Reason})
 		}
 
-		// ドライランモードの場合はここで終了
-		if dryRun {
-			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
-			return nil
-		}
-
-		// Override.ymlの生成
+		// Override.ymlの生成（ドライランモードでも競合検出のために実行）
 		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
 		override, err := overrideGenerator.GenerateOverride(ctx, config, optimizedResolutions)
 		if err != nil {
 			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
+		}
+
+		// ---------------- Network conflict detection -----------------
+
+		networkDetector := scanner.NewDockerNetworkDetector(logger)
+		dockerNets, err := networkDetector.DetectNetworks(ctx)
+		if err != nil {
+			logger.Warn(ctx, "既存Dockerネットワークの検出に失敗しました。ネットワーク競合チェックをスキップします。", 
+				types.Field{Key: "error", Value: err.Error()})
+			dockerNets = []scanner.NetworkInfo{} // Continue with empty network list
+		} else {
+			logger.Info(ctx, "既存Dockerネットワークを検出しました", 
+				types.Field{Key: "network_count", Value: len(dockerNets)})
+		}
+
+		usedSubnets := make(map[string]bool)
+		for _, n := range dockerNets {
+			for _, s := range n.Subnets {
+				usedSubnets[s] = true
+				logger.Debug(ctx, "既存ネットワークサブネットを記録", 
+					types.Field{Key: "network", Value: n.Name},
+					types.Field{Key: "subnet", Value: s})
+			}
+		}
+
+		composeSubnets := getComposeSubnets(config)
+		networkOverrides := make(map[string]types.NetworkOverride)
+		
+		if len(composeSubnets) > 0 {
+			logger.Info(ctx, "Docker Composeネットワーク設定を検出", 
+				types.Field{Key: "network_count", Value: len(composeSubnets)})
+		}
+
+		for netName, subnet := range composeSubnets {
+			if subnet == "" {
+				logger.Debug(ctx, "ネットワークにサブネット設定がありません", 
+					types.Field{Key: "network", Value: netName})
+				continue
+			}
+			
+			logger.Debug(ctx, "ネットワーク競合をチェック", 
+				types.Field{Key: "network", Value: netName},
+				types.Field{Key: "subnet", Value: subnet})
+			
+			if usedSubnets[subnet] {
+				// conflict detected
+				logger.Warn(ctx, "ネットワークサブネット競合を検出", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "conflicting_subnet", Value: subnet})
+				
+				newSubnet := allocateNewSubnet(usedSubnets)
+				if newSubnet == "" {
+					logger.Warn(ctx, "利用可能なサブネットが見つかりません。すべての安全な範囲が使用済みです。", 
+						types.Field{Key: "network", Value: netName})
+					continue
+				}
+				usedSubnets[newSubnet] = true
+
+				networkOverrides[netName] = types.NetworkOverride{
+					IPAM: types.IPAM{
+						Config: []types.IPAMConfig{{Subnet: newSubnet}},
+					},
+				}
+
+				logger.Info(ctx, "ネットワークサブネット競合を解決",
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "original_subnet", Value: subnet},
+					types.Field{Key: "new_subnet", Value: newSubnet})
+			} else {
+				logger.Debug(ctx, "ネットワーク競合なし", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "subnet", Value: subnet})
+			}
 		}
 
 		// Override.ymlの妥当性検証
@@ -385,16 +504,31 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 			outputFile = "docker-compose.override.yml"
 		}
 
-		// Override.ymlファイルの書き込み
-		if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
-			return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+		// ネットワークオーバーライドを追加
+		if len(networkOverrides) > 0 {
+			if override.Networks == nil {
+				override.Networks = make(map[string]types.NetworkOverride)
+			}
+			for k, v := range networkOverrides {
+				override.Networks[k] = v
+			}
 		}
 
-		logger.Info(ctx, "Override.ymlファイルが生成されました",
-			types.Field{Key: "output_file", Value: outputFile})
+		// ドライランモードでない場合のみファイル書き込み
+		if !dryRun {
+			// Override.ymlファイルの書き込み
+			if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
+				return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+			}
 
-		// Docker Composeの実行（スキップフラグがない場合）
-		if !skipComposeUp {
+			logger.Info(ctx, "Override.ymlファイルが生成されました",
+				types.Field{Key: "output_file", Value: outputFile})
+		} else {
+			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
+		}
+
+		// Docker Composeの実行（スキップフラグがない場合かつドライランモードでない場合）
+		if !skipComposeUp && !dryRun {
 			// override.ymlが生成された場合は、既存のコンテナを停止してから起動
 			logger.Info(ctx, "既存のコンテナを停止してからDocker Composeを起動")
 			if err := stopExistingContainers(ctx, filePath); err != nil {

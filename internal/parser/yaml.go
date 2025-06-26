@@ -145,6 +145,8 @@ func (p *YamlComposeParser) convertToComposeConfig(ctx context.Context, raw map[
 	config := &types.ComposeConfig{
 		Version:  p.extractVersion(raw),
 		Services: make(map[string]types.Service),
+		Networks: make(map[string]types.Network),
+		Volumes:  make(map[string]types.Volume),
 		FilePath: filepath,
 	}
 
@@ -184,6 +186,50 @@ func (p *YamlComposeParser) convertToComposeConfig(ctx context.Context, raw map[
 		}
 
 		config.Services[serviceName] = service
+	}
+
+	// ネットワーク解析
+	if networksInterface, exists := raw["networks"]; exists {
+		networks, ok := networksInterface.(map[string]interface{})
+		if ok {
+			for networkName, networkInterface := range networks {
+				networkMap, ok := networkInterface.(map[string]interface{})
+				if !ok {
+					p.logger.Warn(ctx, "ネットワーク設定の形式が無効です",
+						types.Field{Key: "network", Value: networkName})
+					continue
+				}
+
+				network, err := p.convertToNetwork(ctx, networkName, networkMap)
+				if err != nil {
+					return nil, fmt.Errorf("ネットワーク %s の解析に失敗: %w", networkName, err)
+				}
+
+				config.Networks[networkName] = network
+			}
+		}
+	}
+
+	// ボリューム解析
+	if volumesInterface, exists := raw["volumes"]; exists {
+		volumes, ok := volumesInterface.(map[string]interface{})
+		if ok {
+			for volumeName, volumeInterface := range volumes {
+				volumeMap, ok := volumeInterface.(map[string]interface{})
+				if !ok {
+					p.logger.Warn(ctx, "ボリューム設定の形式が無効です",
+						types.Field{Key: "volume", Value: volumeName})
+					continue
+				}
+
+				volume, err := p.convertToVolume(ctx, volumeName, volumeMap)
+				if err != nil {
+					return nil, fmt.Errorf("ボリューム %s の解析に失敗: %w", volumeName, err)
+				}
+
+				config.Volumes[volumeName] = volume
+			}
+		}
 	}
 
 	return config, nil
@@ -495,4 +541,142 @@ func (d *ComposeFileDetectorImpl) GetDefaultComposeFile(ctx context.Context, dir
 
 	// 優先順位に従って最初に見つかったファイルを返す
 	return files[0], nil
+}
+
+// convertToNetwork はネットワーク設定を変換します。
+func (p *YamlComposeParser) convertToNetwork(ctx context.Context, name string, networkMap map[string]interface{}) (types.Network, error) {
+	network := types.Network{
+		Driver: "bridge", // デフォルト
+		IPAM: types.IPAM{
+			Driver: "default", // デフォルト
+			Config: []types.IPAMConfig{},
+		},
+		Labels: make(map[string]string),
+	}
+
+	// Driver
+	if driver, exists := networkMap["driver"]; exists {
+		if driverStr, ok := driver.(string); ok {
+			network.Driver = driverStr
+		}
+	}
+
+	// IPAM
+	if ipamInterface, exists := networkMap["ipam"]; exists {
+		ipamMap, ok := ipamInterface.(map[string]interface{})
+		if ok {
+			ipam, err := p.convertToIPAM(ctx, ipamMap)
+			if err != nil {
+				return network, fmt.Errorf("IPAM設定の解析に失敗: %w", err)
+			}
+			network.IPAM = ipam
+		}
+	}
+
+	// Labels
+	if labelsInterface, exists := networkMap["labels"]; exists {
+		if labelsMap, ok := labelsInterface.(map[string]interface{}); ok {
+			for key, value := range labelsMap {
+				if valueStr, ok := value.(string); ok {
+					network.Labels[key] = valueStr
+				} else {
+					network.Labels[key] = fmt.Sprintf("%v", value)
+				}
+			}
+		}
+	}
+
+	return network, nil
+}
+
+// convertToIPAM はIPAM設定を変換します。
+func (p *YamlComposeParser) convertToIPAM(ctx context.Context, ipamMap map[string]interface{}) (types.IPAM, error) {
+	ipam := types.IPAM{
+		Driver: "default", // デフォルト
+		Config: []types.IPAMConfig{},
+	}
+
+	// Driver
+	if driver, exists := ipamMap["driver"]; exists {
+		if driverStr, ok := driver.(string); ok {
+			ipam.Driver = driverStr
+		}
+	}
+
+	// Config
+	if configInterface, exists := ipamMap["config"]; exists {
+		configList, ok := configInterface.([]interface{})
+		if ok {
+			for _, configItem := range configList {
+				configMap, ok := configItem.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				ipamConfig := types.IPAMConfig{}
+
+				// Subnet
+				if subnet, exists := configMap["subnet"]; exists {
+					if subnetStr, ok := subnet.(string); ok {
+						ipamConfig.Subnet = subnetStr
+					}
+				}
+
+				// Gateway
+				if gateway, exists := configMap["gateway"]; exists {
+					if gatewayStr, ok := gateway.(string); ok {
+						ipamConfig.Gateway = gatewayStr
+					}
+				}
+
+				ipam.Config = append(ipam.Config, ipamConfig)
+			}
+		}
+	}
+
+	return ipam, nil
+}
+
+// convertToVolume はボリューム設定を変換します。
+func (p *YamlComposeParser) convertToVolume(ctx context.Context, name string, volumeMap map[string]interface{}) (types.Volume, error) {
+	volume := types.Volume{
+		Driver:     "local", // デフォルト
+		DriverOpts: make(map[string]string),
+		Labels:     make(map[string]string),
+	}
+
+	// Driver
+	if driver, exists := volumeMap["driver"]; exists {
+		if driverStr, ok := driver.(string); ok {
+			volume.Driver = driverStr
+		}
+	}
+
+	// Driver options
+	if driverOptsInterface, exists := volumeMap["driver_opts"]; exists {
+		if driverOptsMap, ok := driverOptsInterface.(map[string]interface{}); ok {
+			for key, value := range driverOptsMap {
+				if valueStr, ok := value.(string); ok {
+					volume.DriverOpts[key] = valueStr
+				} else {
+					volume.DriverOpts[key] = fmt.Sprintf("%v", value)
+				}
+			}
+		}
+	}
+
+	// Labels
+	if labelsInterface, exists := volumeMap["labels"]; exists {
+		if labelsMap, ok := labelsInterface.(map[string]interface{}); ok {
+			for key, value := range labelsMap {
+				if valueStr, ok := value.(string); ok {
+					volume.Labels[key] = valueStr
+				} else {
+					volume.Labels[key] = fmt.Sprintf("%v", value)
+				}
+			}
+		}
+	}
+
+	return volume, nil
 }

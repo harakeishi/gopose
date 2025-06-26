@@ -283,6 +283,20 @@ func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideCon
 		}
 	}
 
+	if len(override.Networks) > 0 {
+		builder.WriteString("networks:\n")
+		for netName, netOverride := range override.Networks {
+			builder.WriteString(fmt.Sprintf("    %s:\n", netName))
+			if len(netOverride.IPAM.Config) > 0 {
+				builder.WriteString("        ipam:\n")
+				builder.WriteString("            config:\n")
+				for _, cfg := range netOverride.IPAM.Config {
+					builder.WriteString(fmt.Sprintf("                - subnet: \"%s\"\n", cfg.Subnet))
+				}
+			}
+		}
+	}
+
 	return builder.String()
 }
 
