@@ -237,15 +237,39 @@ func getComposeSubnets(config *types.ComposeConfig) map[string]string {
 	return result
 }
 
-// allocateNewSubnet returns first /16 subnet in 172.30.0.0/16 .. 172.99.0.0/16 not in used set
+// allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
 func allocateNewSubnet(used map[string]bool) string {
-	for i := 30; i < 100; i++ {
-		candidate := fmt.Sprintf("172.%d.0.0/16", i)
+	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
+	
+	// 1. Try 10.x.x.x/24 range (safe for most environments)
+	for i := 20; i < 255; i++ { // Skip common ranges like 10.0.x.x, 10.1.x.x
+		for j := 0; j < 255; j++ {
+			candidate := fmt.Sprintf("10.%d.%d.0/24", i, j)
+			if !used[candidate] {
+				return candidate
+			}
+		}
+	}
+	
+	// 2. Try 192.168.x.x/24 range (commonly used but safer than 172.x.x.x)
+	for i := 100; i < 255; i++ { // Skip common home router ranges
+		candidate := fmt.Sprintf("192.168.%d.0/24", i)
 		if !used[candidate] {
 			return candidate
 		}
 	}
-	return ""
+	
+	// 3. Try 172.x.x.x/24 range (last resort, more likely to conflict)
+	for i := 30; i < 100; i++ { // Skip Docker's default range 172.17-29.x.x
+		for j := 0; j < 255; j++ {
+			candidate := fmt.Sprintf("172.%d.%d.0/24", i, j)
+			if !used[candidate] {
+				return candidate
+			}
+		}
+	}
+	
+	return "" // No available subnet found
 }
 
 // upCmd はupコマンドを表します。
@@ -388,13 +412,7 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 				types.Field{Key: "reason", Value: resolution.Reason})
 		}
 
-		// ドライランモードの場合はここで終了
-		if dryRun {
-			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
-			return nil
-		}
-
-		// Override.ymlの生成
+		// Override.ymlの生成（ドライランモードでも競合検出のために実行）
 		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
 		override, err := overrideGenerator.GenerateOverride(ctx, config, optimizedResolutions)
 		if err != nil {
@@ -404,27 +422,55 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 		// ---------------- Network conflict detection -----------------
 
 		networkDetector := scanner.NewDockerNetworkDetector(logger)
-		dockerNets, _ := networkDetector.DetectNetworks(ctx)
+		dockerNets, err := networkDetector.DetectNetworks(ctx)
+		if err != nil {
+			logger.Warn(ctx, "既存Dockerネットワークの検出に失敗しました。ネットワーク競合チェックをスキップします。", 
+				types.Field{Key: "error", Value: err.Error()})
+			dockerNets = []scanner.NetworkInfo{} // Continue with empty network list
+		} else {
+			logger.Info(ctx, "既存Dockerネットワークを検出しました", 
+				types.Field{Key: "network_count", Value: len(dockerNets)})
+		}
 
 		usedSubnets := make(map[string]bool)
 		for _, n := range dockerNets {
 			for _, s := range n.Subnets {
 				usedSubnets[s] = true
+				logger.Debug(ctx, "既存ネットワークサブネットを記録", 
+					types.Field{Key: "network", Value: n.Name},
+					types.Field{Key: "subnet", Value: s})
 			}
 		}
 
 		composeSubnets := getComposeSubnets(config)
 		networkOverrides := make(map[string]types.NetworkOverride)
+		
+		if len(composeSubnets) > 0 {
+			logger.Info(ctx, "Docker Composeネットワーク設定を検出", 
+				types.Field{Key: "network_count", Value: len(composeSubnets)})
+		}
 
 		for netName, subnet := range composeSubnets {
 			if subnet == "" {
+				logger.Debug(ctx, "ネットワークにサブネット設定がありません", 
+					types.Field{Key: "network", Value: netName})
 				continue
 			}
+			
+			logger.Debug(ctx, "ネットワーク競合をチェック", 
+				types.Field{Key: "network", Value: netName},
+				types.Field{Key: "subnet", Value: subnet})
+			
 			if usedSubnets[subnet] {
 				// conflict detected
+				logger.Warn(ctx, "ネットワークサブネット競合を検出", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "conflicting_subnet", Value: subnet})
+				
 				newSubnet := allocateNewSubnet(usedSubnets)
 				if newSubnet == "" {
-					logger.Warn(ctx, "利用可能なサブネットが見つかりません", types.Field{Key: "network", Value: netName})
+					logger.Warn(ctx, "利用可能なサブネットが見つかりません。すべての安全な範囲が使用済みです。", 
+						types.Field{Key: "network", Value: netName})
 					continue
 				}
 				usedSubnets[newSubnet] = true
@@ -435,10 +481,14 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 					},
 				}
 
-				logger.Info(ctx, "ネットワークサブネットを変更",
+				logger.Info(ctx, "ネットワークサブネット競合を解決",
 					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "from", Value: subnet},
-					types.Field{Key: "to", Value: newSubnet})
+					types.Field{Key: "original_subnet", Value: subnet},
+					types.Field{Key: "new_subnet", Value: newSubnet})
+			} else {
+				logger.Debug(ctx, "ネットワーク競合なし", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "subnet", Value: subnet})
 			}
 		}
 
@@ -462,16 +512,21 @@ docker composeコマンドのラッパーとして動作し、ポート衝突の
 			}
 		}
 
-		// Override.ymlファイルの書き込み
-		if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
-			return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+		// ドライランモードでない場合のみファイル書き込み
+		if !dryRun {
+			// Override.ymlファイルの書き込み
+			if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
+				return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+			}
+
+			logger.Info(ctx, "Override.ymlファイルが生成されました",
+				types.Field{Key: "output_file", Value: outputFile})
+		} else {
+			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
 		}
 
-		logger.Info(ctx, "Override.ymlファイルが生成されました",
-			types.Field{Key: "output_file", Value: outputFile})
-
-		// Docker Composeの実行（スキップフラグがない場合）
-		if !skipComposeUp {
+		// Docker Composeの実行（スキップフラグがない場合かつドライランモードでない場合）
+		if !skipComposeUp && !dryRun {
 			// override.ymlが生成された場合は、既存のコンテナを停止してから起動
 			logger.Info(ctx, "既存のコンテナを停止してからDocker Composeを起動")
 			if err := stopExistingContainers(ctx, filePath); err != nil {
