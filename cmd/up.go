@@ -25,6 +25,7 @@ var (
 	outputFile         string
 	skipComposeUp      bool
 	composeProjectName string
+	composeArgs        []string
 )
 
 // parsePortRange はポート範囲文字列を解析します。
