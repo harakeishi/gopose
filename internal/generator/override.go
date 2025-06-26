@@ -263,38 +263,6 @@ func (g *OverrideGeneratorImpl) validateResolutionUniqueness(ctx context.Context
 	return nil
 }
 
-// convertToComposeFormat はDocker Compose互換の形式に変換します。
-func (g *OverrideGeneratorImpl) convertToComposeFormat(override *types.OverrideConfig) map[string]interface{} {
-	composeServices := make(map[string]interface{})
-
-	for serviceName, serviceOverride := range override.Services {
-		service := make(map[string]interface{})
-
-		// ポートを文字列形式に変換
-		if len(serviceOverride.Ports) > 0 {
-			ports := make([]string, 0, len(serviceOverride.Ports))
-			for _, port := range serviceOverride.Ports {
-				// "host:container" 形式に変換
-				if port.Host != 0 {
-					portString := fmt.Sprintf("%d:%d", port.Host, port.Container)
-					ports = append(ports, portString)
-				}
-			}
-			service["ports"] = ports
-		}
-
-		composeServices[serviceName] = service
-	}
-
-	result := map[string]interface{}{
-		"services": composeServices,
-	}
-
-	// バージョンは含めない（Docker Composeの警告を避けるため）
-	// メタデータも含めない（Docker Composeには不要）
-
-	return result
-}
 
 // generateOverrideYAML は!overrideタグ付きのYAMLを生成します。
 func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideConfig) string {
