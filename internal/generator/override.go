@@ -281,6 +281,16 @@ func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideCon
 				}
 			}
 		}
+
+		if len(serviceOverride.Networks) > 0 {
+			builder.WriteString("        networks:\n")
+			for netName, netConfig := range serviceOverride.Networks {
+				builder.WriteString(fmt.Sprintf("            %s:\n", netName))
+				if netConfig.IPv4Address != "" {
+					builder.WriteString(fmt.Sprintf("                ipv4_address: %s\n", netConfig.IPv4Address))
+				}
+			}
+		}
 	}
 
 	if len(override.Networks) > 0 {

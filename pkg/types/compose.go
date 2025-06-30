@@ -58,7 +58,7 @@ type OverrideConfig struct {
 // ServiceOverride はサービスのオーバーライド設定を表します。
 type ServiceOverride struct {
 	Ports    []PortMapping              `yaml:"ports" json:"ports"`
-	Networks map[string]ServiceNetwork  `yaml:"networks,omitempty" json:"networks,omitempty"`
+	Networks map[string]ServiceNetwork  `yaml:"networks" json:"networks"`
 }
 
 // ServiceNetwork はサービスのネットワーク設定を表します。

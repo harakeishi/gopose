@@ -583,6 +583,10 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 
 				// サービスのIPアドレスも新しいサブネットに再割り当て
 				serviceIPs := getServiceNetworkIPs(config, netName)
+				logger.Debug(ctx, "サービスIP情報を取得", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "service_count", Value: len(serviceIPs)},
+					types.Field{Key: "service_ips", Value: fmt.Sprintf("%+v", serviceIPs)})
 				if len(serviceIPs) > 0 {
 					newServiceIPs, err := remapIPAddressesToNewSubnet(subnet, newSubnet, serviceIPs)
 					if err != nil {
@@ -604,6 +608,11 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 								IPv4Address: newIP,
 							}
 							override.Services[serviceName] = serviceOverride
+							
+							logger.Debug(ctx, "Override.Servicesに追加されたサービス", 
+								types.Field{Key: "service", Value: serviceName},
+								types.Field{Key: "override_services_count", Value: len(override.Services)},
+								types.Field{Key: "service_override", Value: fmt.Sprintf("%+v", serviceOverride)})
 							
 							logger.Info(ctx, "サービスIPアドレスを再割り当て",
 								types.Field{Key: "service", Value: serviceName},
