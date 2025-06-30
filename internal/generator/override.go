@@ -268,6 +268,11 @@ func (g *OverrideGeneratorImpl) validateResolutionUniqueness(ctx context.Context
 func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideConfig) string {
 	var builder strings.Builder
 
+	// プロジェクト名がある場合は先頭に出力
+	if override.Name != "" {
+		builder.WriteString(fmt.Sprintf("name: %s\n\n", override.Name))
+	}
+
 	builder.WriteString("services:\n")
 
 	for serviceName, serviceOverride := range override.Services {

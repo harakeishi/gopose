@@ -49,7 +49,8 @@ type Volume struct {
 
 // OverrideConfig はoverride.ymlファイルの構造を表します。
 type OverrideConfig struct {
-	Version  string                     `yaml:"version" json:"version"`
+	Name     string                     `yaml:"name,omitempty" json:"name,omitempty"`
+	Version  string                     `yaml:"version,omitempty" json:"version,omitempty"`
 	Services map[string]ServiceOverride `yaml:"services" json:"services"`
 	Networks map[string]NetworkOverride `yaml:"networks,omitempty" json:"networks,omitempty"`
 	Metadata OverrideMetadata           `yaml:"x-gopose-metadata" json:"metadata"`

@@ -487,6 +487,13 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
 		}
 
+		// プロジェクト名をoverrideに設定（Docker Composeコマンドの統一のため）
+		if composeProjectName != "" {
+			override.Name = composeProjectName
+			logger.Debug(ctx, "Override.ymlにプロジェクト名を設定", 
+				types.Field{Key: "project_name", Value: composeProjectName})
+		}
+
 		// ---------------- Network conflict detection -----------------
 
 		networkDetector := scanner.NewDockerNetworkDetector(logger)
