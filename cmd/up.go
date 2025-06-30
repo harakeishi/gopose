@@ -251,6 +251,19 @@ func getComposeSubnets(config *types.ComposeConfig) map[string]string {
 	return result
 }
 
+// getServiceNetworkIPs は指定されたネットワークを使用するサービスのIPアドレスを抽出します
+func getServiceNetworkIPs(config *types.ComposeConfig, networkName string) map[string]string {
+	result := make(map[string]string)
+	for serviceName, service := range config.Services {
+		if networkConfig, exists := service.Networks[networkName]; exists {
+			if networkConfig.IPv4Address != "" {
+				result[serviceName] = networkConfig.IPv4Address
+			}
+		}
+	}
+	return result
+}
+
 // allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
 func allocateNewSubnet(used map[string]bool) string {
 	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
@@ -284,6 +297,44 @@ func allocateNewSubnet(used map[string]bool) string {
 	}
 	
 	return "" // No available subnet found
+}
+
+// remapIPAddressesToNewSubnet は既存のIPアドレスを新しいサブネットに再マップします
+func remapIPAddressesToNewSubnet(oldSubnet, newSubnet string, serviceIPs map[string]string) (map[string]string, error) {
+	// サブネットから基底アドレスを取得
+	parts := strings.Split(oldSubnet, "/")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("無効なサブネット形式: %s", oldSubnet)
+	}
+	oldBase := parts[0]
+	
+	newParts := strings.Split(newSubnet, "/")
+	if len(newParts) != 2 {
+		return nil, fmt.Errorf("無効なサブネット形式: %s", newSubnet)
+	}
+	newBase := newParts[0]
+	
+	// 既存の基底アドレスと新しい基底アドレスを取得
+	oldBaseIP := strings.Split(oldBase, ".")
+	newBaseIP := strings.Split(newBase, ".")
+	
+	if len(oldBaseIP) != 4 || len(newBaseIP) != 4 {
+		return nil, fmt.Errorf("無効なIPアドレス形式")
+	}
+	
+	newIPs := make(map[string]string)
+	for service, oldIP := range serviceIPs {
+		oldIPParts := strings.Split(oldIP, ".")
+		if len(oldIPParts) != 4 {
+			continue // 無効なIPはスキップ
+		}
+		
+		// 新しいIPアドレスを生成（最後のオクテットのみ保持）
+		newIP := fmt.Sprintf("%s.%s.%s.%s", newBaseIP[0], newBaseIP[1], newBaseIP[2], oldIPParts[3])
+		newIPs[service] = newIP
+	}
+	
+	return newIPs, nil
 }
 
 // upCmd はupコマンドを表します。
@@ -528,6 +579,39 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 					IPAM: types.IPAM{
 						Config: []types.IPAMConfig{{Subnet: newSubnet}},
 					},
+				}
+
+				// サービスのIPアドレスも新しいサブネットに再割り当て
+				serviceIPs := getServiceNetworkIPs(config, netName)
+				if len(serviceIPs) > 0 {
+					newServiceIPs, err := remapIPAddressesToNewSubnet(subnet, newSubnet, serviceIPs)
+					if err != nil {
+						logger.Warn(ctx, "サービスIPアドレスの再マッピングに失敗", 
+							types.Field{Key: "network", Value: netName},
+							types.Field{Key: "error", Value: err.Error()})
+					} else {
+						// Override.ymlにサービスのネットワーク設定を追加
+						for serviceName, newIP := range newServiceIPs {
+							// 既存のサービスオーバーライドを取得または作成
+							if override.Services == nil {
+								override.Services = make(map[string]types.ServiceOverride)
+							}
+							serviceOverride := override.Services[serviceName]
+							if serviceOverride.Networks == nil {
+								serviceOverride.Networks = make(map[string]types.ServiceNetwork)
+							}
+							serviceOverride.Networks[netName] = types.ServiceNetwork{
+								IPv4Address: newIP,
+							}
+							override.Services[serviceName] = serviceOverride
+							
+							logger.Info(ctx, "サービスIPアドレスを再割り当て",
+								types.Field{Key: "service", Value: serviceName},
+								types.Field{Key: "network", Value: netName},
+								types.Field{Key: "old_ip", Value: serviceIPs[serviceName]},
+								types.Field{Key: "new_ip", Value: newIP})
+						}
+					}
 				}
 
 				logger.Info(ctx, "ネットワーク競合を解決",
