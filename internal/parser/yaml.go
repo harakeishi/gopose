@@ -265,6 +265,11 @@ func (p *YamlComposeParser) convertToService(ctx context.Context, name string, s
 		service.DependsOn = p.parseDependsOn(depends)
 	}
 
+	// ネットワーク設定
+	if networks, exists := serviceMap["networks"]; exists {
+		service.Networks = p.parseNetworks(networks)
+	}
+
 	return service, nil
 }
 
@@ -474,6 +479,39 @@ func (p *YamlComposeParser) parseDependsOn(depends interface{}) []string {
 	case map[string]interface{}:
 		for key := range d {
 			result = append(result, key)
+		}
+	}
+
+	return result
+}
+
+// parseNetworks はサービスのネットワーク設定を解析します。
+func (p *YamlComposeParser) parseNetworks(networks interface{}) map[string]types.ServiceNetwork {
+	result := make(map[string]types.ServiceNetwork)
+
+	switch n := networks.(type) {
+	case []interface{}:
+		// 単純なネットワーク名のリスト
+		for _, item := range n {
+			if networkName, ok := item.(string); ok {
+				result[networkName] = types.ServiceNetwork{}
+			}
+		}
+	case map[string]interface{}:
+		// 詳細なネットワーク設定
+		for networkName, config := range n {
+			serviceNetwork := types.ServiceNetwork{}
+			
+			if configMap, ok := config.(map[string]interface{}); ok {
+				// IPv4アドレス設定
+				if ipv4, exists := configMap["ipv4_address"]; exists {
+					if ipv4Str, ok := ipv4.(string); ok {
+						serviceNetwork.IPv4Address = ipv4Str
+					}
+				}
+			}
+			
+			result[networkName] = serviceNetwork
 		}
 	}
 
