@@ -79,9 +79,15 @@ func createPortConfig(portRangeStr string) (types.PortConfig, error) {
 }
 
 // detectWorktreeProjectName は現在の git ワークツリーのトップレベルディレクトリ名を
-// 取得して返します。git リポジトリ外で実行された場合や git コマンドが利用できない場合は
-// 空文字列を返します。
+// 取得して返します。worktree環境では現在のディレクトリ名も含めて一意性を確保します。
 func detectWorktreeProjectName() (string, error) {
+	// 現在の作業ディレクトリを取得
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	
+	// gitのトップレベルディレクトリを取得
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := cmd.Output()
 	if err != nil {
@@ -93,7 +99,16 @@ func detectWorktreeProjectName() (string, error) {
 		return "", nil
 	}
 
-	return filepath.Base(topLevel), nil
+	topLevelBase := filepath.Base(topLevel)
+	currentDirBase := filepath.Base(currentDir)
+	
+	// worktree環境の検出：現在のディレクトリがgitトップレベルと異なる場合
+	if currentDir != topLevel {
+		// worktree環境では "currentdir_topdir" の形式でプロジェクト名を生成
+		return fmt.Sprintf("%s_%s", currentDirBase, topLevelBase), nil
+	}
+	
+	return topLevelBase, nil
 }
 
 // runDockerCompose はdocker composeコマンドを実行します。
@@ -435,7 +450,9 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 		}
 
 		usedSubnets := make(map[string]bool)
+		usedNetworkNames := make(map[string]bool)
 		for _, n := range dockerNets {
+			usedNetworkNames[n.Name] = true
 			for _, s := range n.Subnets {
 				usedSubnets[s] = true
 				logger.Debug(ctx, "既存ネットワークサブネットを記録", 
@@ -452,21 +469,51 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 				types.Field{Key: "network_count", Value: len(composeSubnets)})
 		}
 
+		// プロジェクト名が設定されている場合、動的ネットワーク名も考慮
+		projectPrefix := ""
+		if composeProjectName != "" {
+			projectPrefix = composeProjectName + "_"
+		}
+
 		for netName, subnet := range composeSubnets {
+			// プロジェクト名を含む実際のネットワーク名を生成
+			actualNetworkName := projectPrefix + netName
+			
+			logger.Debug(ctx, "ネットワーク競合をチェック", 
+				types.Field{Key: "network", Value: netName},
+				types.Field{Key: "actual_network_name", Value: actualNetworkName},
+				types.Field{Key: "subnet", Value: subnet})
+			
+			// ネットワーク名の衝突をチェック
+			if usedNetworkNames[actualNetworkName] {
+				logger.Warn(ctx, "ネットワーク名競合を検出", 
+					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "conflicting_network_name", Value: actualNetworkName})
+			}
+			
+			// サブネット衝突の従来のチェック
+			needsNewSubnet := false
+			conflictReason := ""
+			
 			if subnet == "" {
 				logger.Debug(ctx, "ネットワークにサブネット設定がありません", 
 					types.Field{Key: "network", Value: netName})
 				continue
 			}
 			
-			logger.Debug(ctx, "ネットワーク競合をチェック", 
-				types.Field{Key: "network", Value: netName},
-				types.Field{Key: "subnet", Value: subnet})
-			
 			if usedSubnets[subnet] {
-				// conflict detected
-				logger.Warn(ctx, "ネットワークサブネット競合を検出", 
+				needsNewSubnet = true
+				conflictReason = "サブネット競合"
+			} else if usedNetworkNames[actualNetworkName] {
+				// ネットワーク名が既に存在し、そのネットワークが異なるサブネットを使用している場合
+				needsNewSubnet = true
+				conflictReason = "ネットワーク名競合"
+			}
+			
+			if needsNewSubnet {
+				logger.Warn(ctx, "ネットワーク競合を検出", 
 					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "reason", Value: conflictReason},
 					types.Field{Key: "conflicting_subnet", Value: subnet})
 				
 				newSubnet := allocateNewSubnet(usedSubnets)
@@ -483,8 +530,9 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 					},
 				}
 
-				logger.Info(ctx, "ネットワークサブネット競合を解決",
+				logger.Info(ctx, "ネットワーク競合を解決",
 					types.Field{Key: "network", Value: netName},
+					types.Field{Key: "reason", Value: conflictReason},
 					types.Field{Key: "original_subnet", Value: subnet},
 					types.Field{Key: "new_subnet", Value: newSubnet})
 			} else {
