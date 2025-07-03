@@ -145,7 +145,7 @@ func (p *YamlComposeParser) convertToComposeConfig(ctx context.Context, raw map[
 	config := &types.ComposeConfig{
 		Version:  p.extractVersion(raw),
 		Services: make(map[string]types.Service),
-		Networks: make(map[string]types.Network),
+		Networks: make(map[string]types.NetworkConfig),
 		Volumes:  make(map[string]types.Volume),
 		FilePath: filepath,
 	}
@@ -267,7 +267,7 @@ func (p *YamlComposeParser) convertToService(ctx context.Context, name string, s
 
 	// ネットワーク設定
 	if networks, exists := serviceMap["networks"]; exists {
-		service.Networks = p.parseNetworks(networks)
+		service.Networks = p.parseServiceNetworks(networks)
 	}
 
 	return service, nil
@@ -485,22 +485,26 @@ func (p *YamlComposeParser) parseDependsOn(depends interface{}) []string {
 	return result
 }
 
-// parseNetworks はサービスのネットワーク設定を解析します。
-func (p *YamlComposeParser) parseNetworks(networks interface{}) map[string]types.ServiceNetwork {
-	result := make(map[string]types.ServiceNetwork)
+// parseServiceNetworks はサービスのネットワーク設定を解析します。
+func (p *YamlComposeParser) parseServiceNetworks(networks interface{}) []types.ServiceNetworkConfig {
+	var result []types.ServiceNetworkConfig
 
 	switch n := networks.(type) {
 	case []interface{}:
 		// 単純なネットワーク名のリスト
 		for _, item := range n {
 			if networkName, ok := item.(string); ok {
-				result[networkName] = types.ServiceNetwork{}
+				result = append(result, types.ServiceNetworkConfig{
+					Name: networkName,
+				})
 			}
 		}
 	case map[string]interface{}:
 		// 詳細なネットワーク設定
 		for networkName, config := range n {
-			serviceNetwork := types.ServiceNetwork{}
+			serviceNetwork := types.ServiceNetworkConfig{
+				Name: networkName,
+			}
 			
 			if configMap, ok := config.(map[string]interface{}); ok {
 				// IPv4アドレス設定
@@ -511,7 +515,7 @@ func (p *YamlComposeParser) parseNetworks(networks interface{}) map[string]types
 				}
 			}
 			
-			result[networkName] = serviceNetwork
+			result = append(result, serviceNetwork)
 		}
 	}
 
@@ -582,13 +586,9 @@ func (d *ComposeFileDetectorImpl) GetDefaultComposeFile(ctx context.Context, dir
 }
 
 // convertToNetwork はネットワーク設定を変換します。
-func (p *YamlComposeParser) convertToNetwork(ctx context.Context, name string, networkMap map[string]interface{}) (types.Network, error) {
-	network := types.Network{
+func (p *YamlComposeParser) convertToNetwork(ctx context.Context, name string, networkMap map[string]interface{}) (types.NetworkConfig, error) {
+	network := types.NetworkConfig{
 		Driver: "bridge", // デフォルト
-		IPAM: types.IPAM{
-			Driver: "default", // デフォルト
-			Config: []types.IPAMConfig{},
-		},
 		Labels: make(map[string]string),
 	}
 
@@ -599,15 +599,30 @@ func (p *YamlComposeParser) convertToNetwork(ctx context.Context, name string, n
 		}
 	}
 
-	// IPAM
+	// External
+	if external, exists := networkMap["external"]; exists {
+		if externalBool, ok := external.(bool); ok {
+			network.External = externalBool
+		}
+	}
+
+	// IPAM から Subnet を抽出
 	if ipamInterface, exists := networkMap["ipam"]; exists {
 		ipamMap, ok := ipamInterface.(map[string]interface{})
 		if ok {
-			ipam, err := p.convertToIPAM(ctx, ipamMap)
-			if err != nil {
-				return network, fmt.Errorf("IPAM設定の解析に失敗: %w", err)
+			if configInterface, exists := ipamMap["config"]; exists {
+				configList, ok := configInterface.([]interface{})
+				if ok && len(configList) > 0 {
+					// 最初の設定からSubnetを取得
+					if configItem, ok := configList[0].(map[string]interface{}); ok {
+						if subnet, exists := configItem["subnet"]; exists {
+							if subnetStr, ok := subnet.(string); ok {
+								network.Subnet = subnetStr
+							}
+						}
+					}
+				}
 			}
-			network.IPAM = ipam
 		}
 	}
 

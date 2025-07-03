@@ -241,11 +241,8 @@ func stopExistingContainers(ctx context.Context, composeFile string) error {
 func getComposeSubnets(config *types.ComposeConfig) map[string]string {
 	result := make(map[string]string)
 	for name, netCfg := range config.Networks {
-		for _, ipCfg := range netCfg.IPAM.Config {
-			if ipCfg.Subnet != "" {
-				result[name] = ipCfg.Subnet
-				break
-			}
+		if netCfg.Subnet != "" {
+			result[name] = netCfg.Subnet
 		}
 	}
 	return result
@@ -255,9 +252,10 @@ func getComposeSubnets(config *types.ComposeConfig) map[string]string {
 func getServiceNetworkIPs(config *types.ComposeConfig, networkName string) map[string]string {
 	result := make(map[string]string)
 	for serviceName, service := range config.Services {
-		if networkConfig, exists := service.Networks[networkName]; exists {
-			if networkConfig.IPv4Address != "" {
+		for _, networkConfig := range service.Networks {
+			if networkConfig.Name == networkName && networkConfig.IPv4Address != "" {
 				result[serviceName] = networkConfig.IPv4Address
+				break
 			}
 		}
 	}
@@ -496,150 +494,69 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 
 		// ---------------- Network conflict detection -----------------
 
+		// ネットワーク衝突検知・解決を実行
 		networkDetector := scanner.NewDockerNetworkDetector(logger)
-		dockerNets, err := networkDetector.DetectNetworks(ctx)
+		networkConflictDetector := resolver.NewNetworkConflictDetectorImpl(networkDetector, logger)
+		networkConflictResolver := resolver.NewNetworkConflictResolverImpl(logger)
+
+		// ネットワーク衝突を検知
+		networkConflicts, err := networkConflictDetector.DetectNetworkConflicts(ctx, config, composeProjectName)
 		if err != nil {
-			logger.Warn(ctx, "既存Dockerネットワークの検出に失敗しました。ネットワーク競合チェックをスキップします。", 
+			logger.Warn(ctx, "ネットワーク衝突検知に失敗しました。ネットワーク競合チェックをスキップします。", 
 				types.Field{Key: "error", Value: err.Error()})
-			dockerNets = []scanner.NetworkInfo{} // Continue with empty network list
-		} else {
-			logger.Info(ctx, "既存Dockerネットワークを検出しました", 
-				types.Field{Key: "network_count", Value: len(dockerNets)})
-		}
+		} else if len(networkConflicts) > 0 {
+			logger.Info(ctx, "ネットワーク衝突を検出しました", 
+				types.Field{Key: "conflicts_count", Value: len(networkConflicts)})
 
-		usedSubnets := make(map[string]bool)
-		usedNetworkNames := make(map[string]bool)
-		for _, n := range dockerNets {
-			usedNetworkNames[n.Name] = true
-			for _, s := range n.Subnets {
-				usedSubnets[s] = true
-				logger.Debug(ctx, "既存ネットワークサブネットを記録", 
-					types.Field{Key: "network", Value: n.Name},
-					types.Field{Key: "subnet", Value: s})
-			}
-		}
+			// ネットワーク衝突を解決
+			networkResolutions, err := networkConflictResolver.ResolveNetworkConflicts(ctx, networkConflicts)
+			if err != nil {
+				logger.Warn(ctx, "ネットワーク衝突解決に失敗しました", 
+					types.Field{Key: "error", Value: err.Error()})
+			} else {
+				logger.Info(ctx, "ネットワーク衝突を解決しました", 
+					types.Field{Key: "resolutions_count", Value: len(networkResolutions)})
 
-		composeSubnets := getComposeSubnets(config)
-		networkOverrides := make(map[string]types.NetworkOverride)
-		
-		if len(composeSubnets) > 0 {
-			logger.Info(ctx, "Docker Composeネットワーク設定を検出", 
-				types.Field{Key: "network_count", Value: len(composeSubnets)})
-		}
-
-		// プロジェクト名が設定されている場合、動的ネットワーク名も考慮
-		projectPrefix := ""
-		if composeProjectName != "" {
-			projectPrefix = composeProjectName + "_"
-		}
-
-		for netName, subnet := range composeSubnets {
-			// プロジェクト名を含む実際のネットワーク名を生成
-			actualNetworkName := projectPrefix + netName
-			
-			logger.Debug(ctx, "ネットワーク競合をチェック", 
-				types.Field{Key: "network", Value: netName},
-				types.Field{Key: "actual_network_name", Value: actualNetworkName},
-				types.Field{Key: "subnet", Value: subnet})
-			
-			// ネットワーク名の衝突をチェック
-			if usedNetworkNames[actualNetworkName] {
-				logger.Warn(ctx, "ネットワーク名競合を検出", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "conflicting_network_name", Value: actualNetworkName})
-			}
-			
-			// サブネット衝突の従来のチェック
-			needsNewSubnet := false
-			conflictReason := ""
-			
-			if subnet == "" {
-				logger.Debug(ctx, "ネットワークにサブネット設定がありません", 
-					types.Field{Key: "network", Value: netName})
-				continue
-			}
-			
-			if usedSubnets[subnet] {
-				needsNewSubnet = true
-				conflictReason = "サブネット競合"
-			} else if usedNetworkNames[actualNetworkName] {
-				// ネットワーク名が既に存在し、そのネットワークが異なるサブネットを使用している場合
-				needsNewSubnet = true
-				conflictReason = "ネットワーク名競合"
-			}
-			
-			if needsNewSubnet {
-				logger.Warn(ctx, "ネットワーク競合を検出", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "reason", Value: conflictReason},
-					types.Field{Key: "conflicting_subnet", Value: subnet})
-				
-				newSubnet := allocateNewSubnet(usedSubnets)
-				if newSubnet == "" {
-					logger.Warn(ctx, "利用可能なサブネットが見つかりません。すべての安全な範囲が使用済みです。", 
-						types.Field{Key: "network", Value: netName})
-					continue
-				}
-				usedSubnets[newSubnet] = true
-
-				networkOverrides[netName] = types.NetworkOverride{
-					IPAM: types.IPAM{
-						Config: []types.IPAMConfig{{Subnet: newSubnet}},
-					},
-				}
-
-				// サービスのIPアドレスも新しいサブネットに再割り当て
-				serviceIPs := getServiceNetworkIPs(config, netName)
-				logger.Debug(ctx, "サービスIP情報を取得", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "service_count", Value: len(serviceIPs)},
-					types.Field{Key: "service_ips", Value: fmt.Sprintf("%+v", serviceIPs)})
-				if len(serviceIPs) > 0 {
-					newServiceIPs, err := remapIPAddressesToNewSubnet(subnet, newSubnet, serviceIPs)
-					if err != nil {
-						logger.Warn(ctx, "サービスIPアドレスの再マッピングに失敗", 
-							types.Field{Key: "network", Value: netName},
-							types.Field{Key: "error", Value: err.Error()})
-					} else {
-						// Override.ymlにサービスのネットワーク設定を追加
-						for serviceName, newIP := range newServiceIPs {
-							// 既存のサービスオーバーライドを取得または作成
-							if override.Services == nil {
-								override.Services = make(map[string]types.ServiceOverride)
-							}
-							serviceOverride := override.Services[serviceName]
-							if serviceOverride.Networks == nil {
-								serviceOverride.Networks = make(map[string]types.ServiceNetwork)
-							}
-							serviceOverride.Networks[netName] = types.ServiceNetwork{
-								IPv4Address: newIP,
-							}
-							override.Services[serviceName] = serviceOverride
-							
-							logger.Debug(ctx, "Override.Servicesに追加されたサービス", 
-								types.Field{Key: "service", Value: serviceName},
-								types.Field{Key: "override_services_count", Value: len(override.Services)},
-								types.Field{Key: "service_override", Value: fmt.Sprintf("%+v", serviceOverride)})
-							
-							logger.Info(ctx, "サービスIPアドレスを再割り当て",
-								types.Field{Key: "service", Value: serviceName},
-								types.Field{Key: "network", Value: netName},
-								types.Field{Key: "old_ip", Value: serviceIPs[serviceName]},
-								types.Field{Key: "new_ip", Value: newIP})
+				// 解決結果をoverride設定に適用
+				networkOverrideConfig, err := networkConflictResolver.GenerateNetworkOverride(ctx, networkResolutions, config)
+				if err != nil {
+					logger.Warn(ctx, "ネットワークoverride設定の生成に失敗しました", 
+						types.Field{Key: "error", Value: err.Error()})
+				} else {
+					// ネットワーク設定をoverride.ymlに追加
+					if override.Networks == nil {
+						override.Networks = make(map[string]types.NetworkOverride)
+					}
+					for networkName, networkConfig := range networkOverrideConfig.Networks {
+						override.Networks[networkName] = types.NetworkOverride{
+							IPAM: types.IPAM{
+								Config: []types.IPAMConfig{{Subnet: networkConfig.Subnet}},
+							},
 						}
 					}
-				}
 
-				logger.Info(ctx, "ネットワーク競合を解決",
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "reason", Value: conflictReason},
-					types.Field{Key: "original_subnet", Value: subnet},
-					types.Field{Key: "new_subnet", Value: newSubnet})
-			} else {
-				logger.Debug(ctx, "ネットワーク競合なし", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "subnet", Value: subnet})
+					// サービス設定をoverride.ymlに追加
+					if override.Services == nil {
+						override.Services = make(map[string]types.ServiceOverride)
+					}
+					for serviceName, serviceConfig := range networkOverrideConfig.Services {
+						serviceOverride := override.Services[serviceName]
+						if serviceOverride.Networks == nil {
+							serviceOverride.Networks = make(map[string]types.ServiceNetwork)
+						}
+						for _, networkConfig := range serviceConfig.Networks {
+							if networkConfig.IPv4Address != "" {
+								serviceOverride.Networks[networkConfig.Name] = types.ServiceNetwork{
+									IPv4Address: networkConfig.IPv4Address,
+								}
+							}
+						}
+						override.Services[serviceName] = serviceOverride
+					}
+				}
 			}
+		} else {
+			logger.Info(ctx, "ネットワーク衝突は検出されませんでした")
 		}
 
 		// Override.ymlの妥当性検証
@@ -652,15 +569,6 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 			outputFile = "docker-compose.override.yml"
 		}
 
-		// ネットワークオーバーライドを追加
-		if len(networkOverrides) > 0 {
-			if override.Networks == nil {
-				override.Networks = make(map[string]types.NetworkOverride)
-			}
-			for k, v := range networkOverrides {
-				override.Networks[k] = v
-			}
-		}
 
 		// ドライランモードでない場合のみファイル書き込み
 		if !dryRun {

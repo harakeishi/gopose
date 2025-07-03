@@ -12,7 +12,13 @@ import (
 // NetworkInfo holds basic information about an existing Docker network.
 type NetworkInfo struct {
 	Name    string   `json:"Name"`
+	Subnet  string   `json:"Subnet"`
 	Subnets []string `json:"Subnets"`
+}
+
+// NetworkDetector はネットワーク検出のインターフェースです。
+type NetworkDetector interface {
+	DetectNetworks(ctx context.Context) ([]NetworkInfo, error)
 }
 
 // DockerNetworkDetector detects existing Docker networks and their subnets.
@@ -56,7 +62,11 @@ func (d *DockerNetworkDetector) DetectNetworks(ctx context.Context) ([]NetworkIn
 				subs = append(subs, cfg.Subnet)
 			}
 		}
-		networks = append(networks, NetworkInfo{Name: raw.Name, Subnets: subs})
+		var primarySubnet string
+		if len(subs) > 0 {
+			primarySubnet = subs[0]
+		}
+		networks = append(networks, NetworkInfo{Name: raw.Name, Subnet: primarySubnet, Subnets: subs})
 	}
 	return networks, nil
 }
