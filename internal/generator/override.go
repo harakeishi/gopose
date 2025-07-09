@@ -263,7 +263,6 @@ func (g *OverrideGeneratorImpl) validateResolutionUniqueness(ctx context.Context
 	return nil
 }
 
-
 // generateOverrideYAML は!overrideタグ付きのYAMLを生成します。
 func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideConfig) string {
 	var builder strings.Builder
@@ -279,7 +278,7 @@ func (g *OverrideGeneratorImpl) generateOverrideYAML(override *types.OverrideCon
 		builder.WriteString(fmt.Sprintf("    %s:\n", serviceName))
 
 		if len(serviceOverride.Ports) > 0 {
-			builder.WriteString("        ports: !reset\n")
+			builder.WriteString("        ports: !override\n")
 			for _, port := range serviceOverride.Ports {
 				if port.Host != 0 {
 					builder.WriteString(fmt.Sprintf("            - \"%d:%d\"\n", port.Host, port.Container))
