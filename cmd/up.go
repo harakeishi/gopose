@@ -607,7 +607,11 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 							if override.Services == nil {
 								override.Services = make(map[string]types.ServiceOverride)
 							}
-							serviceOverride := override.Services[serviceName]
+							serviceOverride, exists := override.Services[serviceName]
+							if !exists {
+								// 新しいサービスオーバーライドを作成（ポート設定は保持されない）
+								serviceOverride = types.ServiceOverride{}
+							}
 							if serviceOverride.Networks == nil {
 								serviceOverride.Networks = make(map[string]types.ServiceNetwork)
 							}
