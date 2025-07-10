@@ -14,6 +14,12 @@ type OverrideGenerator interface {
 	GenerateMinimal(ctx context.Context, resolutions []types.ConflictResolution) (*types.OverrideConfig, error)
 }
 
+// UnifiedOverrideGenerator は統一的な衝突情報からoverride生成を行うインターフェースです。
+type UnifiedOverrideGenerator interface {
+	GenerateFromConflicts(ctx context.Context, config *types.ComposeConfig, conflictInfo *types.UnifiedConflictInfo) (*types.OverrideConfig, error)
+	ResolveConflicts(ctx context.Context, conflictInfo *types.UnifiedConflictInfo, strategy types.ResolutionStrategy, portConfig types.PortConfig) error
+}
+
 // OverrideValidator は生成内容の妥当性検証を行うインターフェースです。
 type OverrideValidator interface {
 	ValidateOverride(ctx context.Context, override *types.OverrideConfig) error

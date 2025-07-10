@@ -109,8 +109,9 @@ func (n *NetstatPortDetector) parseNetstatOutput(output string) ([]int, error) {
 	ports := make(map[int]bool) // 重複を避けるためにmapを使用
 
 	// macOS/BSD系のnetstat出力形式に対応する正規表現
-	// 例: tcp46      0      0  *.8080                 *.*                    LISTEN
-	re := regexp.MustCompile(`(?:tcp|udp)\S*\s+\d+\s+\d+\s+[^.]*\.(\d+)\s+.*LISTEN`)
+	// 例1: tcp46      0      0  *.8080                 *.*                    LISTEN
+	// 例2: tcp4       0      0  127.0.0.1.3333         *.*                    LISTEN
+	re := regexp.MustCompile(`(?:tcp|udp)\S*\s+\d+\s+\d+\s+(?:\*|\d+\.\d+\.\d+\.\d+)\.(\d+)\s+.*LISTEN`)
 
 	for _, line := range lines {
 		// LISTENステートのみを対象とする

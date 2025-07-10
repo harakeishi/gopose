@@ -52,6 +52,18 @@ type PortScanResult struct {
 	ScanDuration   int64            `json:"scan_duration_ms"`
 }
 
+// UnifiedConflictDetector は統一的な衝突検知を行うインターフェースです。
+type UnifiedConflictDetector interface {
+	DetectConflicts(ctx context.Context, config *types.ComposeConfig, projectName string) (*types.UnifiedConflictInfo, error)
+	DetectPortConflicts(ctx context.Context, config *types.ComposeConfig) ([]types.PortConflictInfo, error)
+	DetectNetworkConflicts(ctx context.Context, config *types.ComposeConfig, projectName string) ([]types.NetworkConflictInfo, error)
+}
+
+// NetworkDetector は既存Dockerネットワークの検知を行うインターフェースです。
+type NetworkDetector interface {
+	DetectNetworks(ctx context.Context) ([]NetworkInfo, error)
+}
+
 // AllocationStrategy はポート割り当て戦略を表します。
 type AllocationStrategy string
 
