@@ -11,7 +11,6 @@ import (
 
 	"github.com/harakeishi/gopose/internal/generator"
 	"github.com/harakeishi/gopose/internal/parser"
-	"github.com/harakeishi/gopose/internal/resolver"
 	"github.com/harakeishi/gopose/internal/scanner"
 	"github.com/harakeishi/gopose/pkg/types"
 	"github.com/spf13/cobra"
@@ -86,7 +85,7 @@ func detectWorktreeProjectName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// gitのトップレベルディレクトリを取得
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := cmd.Output()
@@ -101,13 +100,13 @@ func detectWorktreeProjectName() (string, error) {
 
 	topLevelBase := filepath.Base(topLevel)
 	currentDirBase := filepath.Base(currentDir)
-	
+
 	// worktree環境の検出：現在のディレクトリがgitトップレベルと異なる場合
 	if currentDir != topLevel {
 		// worktree環境では "currentdir_topdir" の形式でプロジェクト名を生成
 		return fmt.Sprintf("%s_%s", currentDirBase, topLevelBase), nil
 	}
-	
+
 	return topLevelBase, nil
 }
 
@@ -267,7 +266,7 @@ func getServiceNetworkIPs(config *types.ComposeConfig, networkName string) map[s
 // allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
 func allocateNewSubnet(used map[string]bool) string {
 	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
-	
+
 	// 1. Try 10.x.x.x/24 range (safe for most environments)
 	for i := 20; i < 255; i++ { // Skip common ranges like 10.0.x.x, 10.1.x.x
 		for j := 0; j < 255; j++ {
@@ -277,7 +276,7 @@ func allocateNewSubnet(used map[string]bool) string {
 			}
 		}
 	}
-	
+
 	// 2. Try 192.168.x.x/24 range (commonly used but safer than 172.x.x.x)
 	for i := 100; i < 255; i++ { // Skip common home router ranges
 		candidate := fmt.Sprintf("192.168.%d.0/24", i)
@@ -285,7 +284,7 @@ func allocateNewSubnet(used map[string]bool) string {
 			return candidate
 		}
 	}
-	
+
 	// 3. Try 172.x.x.x/24 range (last resort, more likely to conflict)
 	for i := 30; i < 100; i++ { // Skip Docker's default range 172.17-29.x.x
 		for j := 0; j < 255; j++ {
@@ -295,7 +294,7 @@ func allocateNewSubnet(used map[string]bool) string {
 			}
 		}
 	}
-	
+
 	return "" // No available subnet found
 }
 
@@ -307,33 +306,33 @@ func remapIPAddressesToNewSubnet(oldSubnet, newSubnet string, serviceIPs map[str
 		return nil, fmt.Errorf("無効なサブネット形式: %s", oldSubnet)
 	}
 	oldBase := parts[0]
-	
+
 	newParts := strings.Split(newSubnet, "/")
 	if len(newParts) != 2 {
 		return nil, fmt.Errorf("無効なサブネット形式: %s", newSubnet)
 	}
 	newBase := newParts[0]
-	
+
 	// 既存の基底アドレスと新しい基底アドレスを取得
 	oldBaseIP := strings.Split(oldBase, ".")
 	newBaseIP := strings.Split(newBase, ".")
-	
+
 	if len(oldBaseIP) != 4 || len(newBaseIP) != 4 {
 		return nil, fmt.Errorf("無効なIPアドレス形式")
 	}
-	
+
 	newIPs := make(map[string]string)
 	for service, oldIP := range serviceIPs {
 		oldIPParts := strings.Split(oldIP, ".")
 		if len(oldIPParts) != 4 {
 			continue // 無効なIPはスキップ
 		}
-		
+
 		// 新しいIPアドレスを生成（最後のオクテットのみ保持）
 		newIP := fmt.Sprintf("%s.%s.%s.%s", newBaseIP[0], newBaseIP[1], newBaseIP[2], oldIPParts[3])
 		newIPs[service] = newIP
 	}
-	
+
 	return newIPs, nil
 }
 
@@ -418,27 +417,30 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("Docker Composeファイルの解析に失敗: %w", err)
 		}
 
-		// ポートスキャンの実行
+		// 統一的な衝突検知の実行
 		portDetector := scanner.NewNetstatPortDetector(logger)
 		portAllocator := scanner.NewPortAllocatorImpl(portDetector, logger)
+		networkDetector := scanner.NewDockerNetworkDetector(logger)
+		unifiedDetector := scanner.NewUnifiedConflictDetectorImpl(portDetector, networkDetector, logger)
 
-		// ポート衝突の検出
-		conflictDetector := resolver.NewConflictDetectorImpl(portDetector, logger)
-		conflicts, err := conflictDetector.DetectPortConflicts(ctx, config)
+		conflictInfo, err := unifiedDetector.DetectConflicts(ctx, config, composeProjectName)
 		if err != nil {
-			return fmt.Errorf("ポート衝突の検出に失敗: %w", err)
+			return fmt.Errorf("衝突検知に失敗: %w", err)
 		}
 
-		logger.Info(ctx, "ポート衝突検出完了", types.Field{Key: "conflicts_count", Value: len(conflicts)})
-
 		// 衝突がない場合
-		if len(conflicts) == 0 {
-			logger.Info(ctx, "ポート衝突は検出されませんでした")
+		if !conflictInfo.HasConflicts() {
+			logger.Info(ctx, "衝突は検出されませんでした")
 			if skipComposeUp {
 				logger.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 			}
 			return nil
 		}
+
+		// 衝突結果の表示
+		logger.Info(ctx, "衝突検知完了",
+			types.Field{Key: "port_conflicts", Value: len(conflictInfo.PortConflicts)},
+			types.Field{Key: "network_conflicts", Value: len(conflictInfo.NetworkConflicts)})
 
 		// 解決戦略の決定
 		resolutionStrategy := types.ResolutionStrategyAutoIncrement
@@ -451,35 +453,35 @@ var upCmd = &cobra.Command{
 			resolutionStrategy = types.ResolutionStrategyUserDefined
 		}
 
-		// ポート衝突の解決（PortConfigを渡す）
-		conflictResolver := resolver.NewConflictResolverWithPortConfig(portAllocator, portConfig, logger)
-		resolutions, err := conflictResolver.ResolvePortConflicts(ctx, conflicts, resolutionStrategy)
-		if err != nil {
-			return fmt.Errorf("ポート衝突の解決に失敗: %w", err)
-		}
-
-		// 解決案の最適化
-		analyzer := resolver.NewPortResolutionAnalyzerImpl(logger)
-		optimizedResolutions, err := analyzer.OptimizeResolutions(ctx, resolutions)
-		if err != nil {
-			return fmt.Errorf("解決案の最適化に失敗: %w", err)
+		// 統一的な衝突解決
+		unifiedGenerator := generator.NewUnifiedOverrideGeneratorImpl(portAllocator, logger)
+		if err := unifiedGenerator.ResolveConflicts(ctx, conflictInfo, resolutionStrategy, portConfig); err != nil {
+			return fmt.Errorf("衝突解決に失敗: %w", err)
 		}
 
 		// 解決結果の表示
-		logger.Info(ctx, "ポート衝突解決完了",
-			types.Field{Key: "resolved_conflicts", Value: len(optimizedResolutions)})
-
-		for _, resolution := range optimizedResolutions {
-			logger.Info(ctx, "ポート解決",
-				types.Field{Key: "service", Value: resolution.ServiceName},
-				types.Field{Key: "from", Value: resolution.ConflictPort},
-				types.Field{Key: "to", Value: resolution.ResolvedPort},
-				types.Field{Key: "reason", Value: resolution.Reason})
+		for _, conflict := range conflictInfo.PortConflicts {
+			if conflict.Resolution != nil {
+				logger.Info(ctx, "ポート解決",
+					types.Field{Key: "service", Value: conflict.ServiceName},
+					types.Field{Key: "from", Value: conflict.Port},
+					types.Field{Key: "to", Value: conflict.Resolution.ResolvedPort},
+					types.Field{Key: "reason", Value: conflict.Resolution.Reason})
+			}
 		}
 
-		// Override.ymlの生成（ドライランモードでも競合検出のために実行）
-		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
-		override, err := overrideGenerator.GenerateOverride(ctx, config, optimizedResolutions)
+		for _, conflict := range conflictInfo.NetworkConflicts {
+			if conflict.Resolution != nil {
+				logger.Info(ctx, "ネットワーク解決",
+					types.Field{Key: "network", Value: conflict.NetworkName},
+					types.Field{Key: "from", Value: conflict.OriginalSubnet},
+					types.Field{Key: "to", Value: conflict.Resolution.ResolvedSubnet},
+					types.Field{Key: "reason", Value: conflict.Resolution.Reason})
+			}
+		}
+
+		// 統一的なOverride.ymlの生成
+		override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
 		if err != nil {
 			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
 		}
@@ -487,163 +489,12 @@ var upCmd = &cobra.Command{
 		// プロジェクト名をoverrideに設定（Docker Composeコマンドの統一のため）
 		if composeProjectName != "" {
 			override.Name = composeProjectName
-			logger.Debug(ctx, "Override.ymlにプロジェクト名を設定", 
+			logger.Debug(ctx, "Override.ymlにプロジェクト名を設定",
 				types.Field{Key: "project_name", Value: composeProjectName})
 		}
 
-		// ---------------- Network conflict detection -----------------
-
-		networkDetector := scanner.NewDockerNetworkDetector(logger)
-		dockerNets, err := networkDetector.DetectNetworks(ctx)
-		if err != nil {
-			logger.Warn(ctx, "既存Dockerネットワークの検出に失敗しました。ネットワーク競合チェックをスキップします。", 
-				types.Field{Key: "error", Value: err.Error()})
-			dockerNets = []scanner.NetworkInfo{} // Continue with empty network list
-		} else {
-			logger.Info(ctx, "既存Dockerネットワークを検出しました", 
-				types.Field{Key: "network_count", Value: len(dockerNets)})
-		}
-
-		usedSubnets := make(map[string]bool)
-		usedNetworkNames := make(map[string]bool)
-		for _, n := range dockerNets {
-			usedNetworkNames[n.Name] = true
-			for _, s := range n.Subnets {
-				usedSubnets[s] = true
-				logger.Debug(ctx, "既存ネットワークサブネットを記録", 
-					types.Field{Key: "network", Value: n.Name},
-					types.Field{Key: "subnet", Value: s})
-			}
-		}
-
-		composeSubnets := getComposeSubnets(config)
-		networkOverrides := make(map[string]types.NetworkOverride)
-		
-		if len(composeSubnets) > 0 {
-			logger.Info(ctx, "Docker Composeネットワーク設定を検出", 
-				types.Field{Key: "network_count", Value: len(composeSubnets)})
-		}
-
-		// プロジェクト名が設定されている場合、動的ネットワーク名も考慮
-		projectPrefix := ""
-		if composeProjectName != "" {
-			projectPrefix = composeProjectName + "_"
-		}
-
-		for netName, subnet := range composeSubnets {
-			// プロジェクト名を含む実際のネットワーク名を生成
-			actualNetworkName := projectPrefix + netName
-			
-			logger.Debug(ctx, "ネットワーク競合をチェック", 
-				types.Field{Key: "network", Value: netName},
-				types.Field{Key: "actual_network_name", Value: actualNetworkName},
-				types.Field{Key: "subnet", Value: subnet})
-			
-			// ネットワーク名の衝突をチェック
-			if usedNetworkNames[actualNetworkName] {
-				logger.Warn(ctx, "ネットワーク名競合を検出", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "conflicting_network_name", Value: actualNetworkName})
-			}
-			
-			// サブネット衝突の従来のチェック
-			needsNewSubnet := false
-			conflictReason := ""
-			
-			if subnet == "" {
-				logger.Debug(ctx, "ネットワークにサブネット設定がありません", 
-					types.Field{Key: "network", Value: netName})
-				continue
-			}
-			
-			if usedSubnets[subnet] {
-				needsNewSubnet = true
-				conflictReason = "サブネット競合"
-			} else if usedNetworkNames[actualNetworkName] {
-				// ネットワーク名が既に存在し、そのネットワークが異なるサブネットを使用している場合
-				needsNewSubnet = true
-				conflictReason = "ネットワーク名競合"
-			}
-			
-			if needsNewSubnet {
-				logger.Warn(ctx, "ネットワーク競合を検出", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "reason", Value: conflictReason},
-					types.Field{Key: "conflicting_subnet", Value: subnet})
-				
-				newSubnet := allocateNewSubnet(usedSubnets)
-				if newSubnet == "" {
-					logger.Warn(ctx, "利用可能なサブネットが見つかりません。すべての安全な範囲が使用済みです。", 
-						types.Field{Key: "network", Value: netName})
-					continue
-				}
-				usedSubnets[newSubnet] = true
-
-				networkOverrides[netName] = types.NetworkOverride{
-					IPAM: types.IPAM{
-						Config: []types.IPAMConfig{{Subnet: newSubnet}},
-					},
-				}
-
-				// サービスのIPアドレスも新しいサブネットに再割り当て
-				serviceIPs := getServiceNetworkIPs(config, netName)
-				logger.Debug(ctx, "サービスIP情報を取得", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "service_count", Value: len(serviceIPs)},
-					types.Field{Key: "service_ips", Value: fmt.Sprintf("%+v", serviceIPs)})
-				if len(serviceIPs) > 0 {
-					newServiceIPs, err := remapIPAddressesToNewSubnet(subnet, newSubnet, serviceIPs)
-					if err != nil {
-						logger.Warn(ctx, "サービスIPアドレスの再マッピングに失敗", 
-							types.Field{Key: "network", Value: netName},
-							types.Field{Key: "error", Value: err.Error()})
-					} else {
-						// Override.ymlにサービスのネットワーク設定を追加
-						for serviceName, newIP := range newServiceIPs {
-							// 既存のサービスオーバーライドを取得または作成
-							if override.Services == nil {
-								override.Services = make(map[string]types.ServiceOverride)
-							}
-							serviceOverride, exists := override.Services[serviceName]
-							if !exists {
-								// 新しいサービスオーバーライドを作成（ポート設定は保持されない）
-								serviceOverride = types.ServiceOverride{}
-							}
-							if serviceOverride.Networks == nil {
-								serviceOverride.Networks = make(map[string]types.ServiceNetwork)
-							}
-							serviceOverride.Networks[netName] = types.ServiceNetwork{
-								IPv4Address: newIP,
-							}
-							override.Services[serviceName] = serviceOverride
-							
-							logger.Debug(ctx, "Override.Servicesに追加されたサービス", 
-								types.Field{Key: "service", Value: serviceName},
-								types.Field{Key: "override_services_count", Value: len(override.Services)},
-								types.Field{Key: "service_override", Value: fmt.Sprintf("%+v", serviceOverride)})
-							
-							logger.Info(ctx, "サービスIPアドレスを再割り当て",
-								types.Field{Key: "service", Value: serviceName},
-								types.Field{Key: "network", Value: netName},
-								types.Field{Key: "old_ip", Value: serviceIPs[serviceName]},
-								types.Field{Key: "new_ip", Value: newIP})
-						}
-					}
-				}
-
-				logger.Info(ctx, "ネットワーク競合を解決",
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "reason", Value: conflictReason},
-					types.Field{Key: "original_subnet", Value: subnet},
-					types.Field{Key: "new_subnet", Value: newSubnet})
-			} else {
-				logger.Debug(ctx, "ネットワーク競合なし", 
-					types.Field{Key: "network", Value: netName},
-					types.Field{Key: "subnet", Value: subnet})
-			}
-		}
-
 		// Override.ymlの妥当性検証
+		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
 		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
 			return fmt.Errorf("Overrideファイルの検証に失敗: %w", err)
 		}
@@ -651,16 +502,6 @@ var upCmd = &cobra.Command{
 		// 出力ファイル名の決定
 		if outputFile == "" {
 			outputFile = "docker-compose.override.yml"
-		}
-
-		// ネットワークオーバーライドを追加
-		if len(networkOverrides) > 0 {
-			if override.Networks == nil {
-				override.Networks = make(map[string]types.NetworkOverride)
-			}
-			for k, v := range networkOverrides {
-				override.Networks[k] = v
-			}
 		}
 
 		// ドライランモードでない場合のみファイル書き込み
