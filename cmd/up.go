@@ -341,11 +341,10 @@ func remapIPAddressesToNewSubnet(oldSubnet, newSubnet string, serviceIPs map[str
 var upCmd = &cobra.Command{
 	Use:   "up [docker-compose-options...]",
 	Short: "ポート衝突・ネットワーク衝突を解決してDocker Composeを起動",
-	Long: `Docker Composeのポートバインディング衝突とネットワークサブネット衝突を検出・解決し、docker-compose.override.yml を生成後、
-Docker Composeを起動します。
+	Long: `Docker Composeのポートバインディング衝突とネットワークサブネット衝突を検出・解決し、docker-compose.override.yml を生成します。
 
-docker composeコマンドのラッパーとして動作し、ポート衝突・ネットワーク衝突の自動解決機能を提供します。
--- 以降のオプションはdocker composeコマンドにそのまま渡されます。`,
+ポート衝突・ネットワーク衝突の自動解決機能を提供し、override.ymlを生成しますが、docker compose upは実行しません。
+必要に応じて手動でdocker compose upを実行してください。`,
 	Example: `  # 基本的な使用方法
   gopose up
 
@@ -394,8 +393,7 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 			types.Field{Key: "output_file", Value: outputFile},
 			types.Field{Key: "project_name", Value: composeProjectName},
 			types.Field{Key: "strategy", Value: strategy},
-			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)},
-			types.Field{Key: "skip_compose_up", Value: skipComposeUp})
+			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)})
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
 		if filePath == "" || filePath == "docker-compose.yml" {
@@ -433,12 +431,11 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 
 		logger.Info(ctx, "ポート衝突検出完了", types.Field{Key: "conflicts_count", Value: len(conflicts)})
 
-		// 衝突がない場合とdryRunでない場合はdocker composeを直接実行
+		// 衝突がない場合
 		if len(conflicts) == 0 {
 			logger.Info(ctx, "ポート衝突は検出されませんでした")
-			if !dryRun && !skipComposeUp {
-				logger.Info(ctx, "override.ymlなしでDocker Composeを実行")
-				return runDockerCompose(cmd, filePath, "", args)
+			if skipComposeUp {
+				logger.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 			}
 			return nil
 		}
@@ -679,18 +676,14 @@ docker composeコマンドのラッパーとして動作し、ポート衝突・
 			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
 		}
 
-		// Docker Composeの実行（スキップフラグがない場合かつドライランモードでない場合）
-		if !skipComposeUp && !dryRun {
-			// override.ymlが生成された場合は、既存のコンテナを停止してから起動
-			logger.Info(ctx, "既存のコンテナを停止してからDocker Composeを起動")
-			if err := stopExistingContainers(ctx, filePath); err != nil {
-				logger.Warn(ctx, "既存コンテナの停止に失敗しましたが、続行します", types.Field{Key: "error", Value: err.Error()})
-			}
+		// Docker Composeの実行（--skip-compose-upが指定された場合は後方互換のための警告を表示）
+		if skipComposeUp {
+			logger.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
+		}
 
-			logger.Info(ctx, "Docker Composeを起動")
-			return runDockerCompose(cmd, filePath, outputFile, args)
-		} else {
-			logger.Info(ctx, "--skip-compose-upが指定されているため、Docker Composeの実行をスキップ")
+		// デフォルトではDocker Composeを実行しない
+		if !dryRun {
+			logger.Info(ctx, "override.ymlの生成が完了しました。docker compose upを実行する場合は、手動で実行してください。")
 		}
 
 		return nil
@@ -703,7 +696,7 @@ func init() {
 	upCmd.Flags().StringVar(&strategy, "strategy", "auto", "解決戦略 (auto, range, user)")
 	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: docker-compose.override.yml)")
 	upCmd.Flags().BoolVar(&dryRun, "dry-run", false, "ドライラン（override.yml生成のみ、Docker Composeは実行しない）")
-	upCmd.Flags().BoolVar(&skipComposeUp, "skip-compose-up", false, "Docker Composeの実行をスキップ（override.yml生成のみ）")
+	upCmd.Flags().BoolVar(&skipComposeUp, "skip-compose-up", false, "[非推奨] このオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 
 	// Docker Composeオプションもサポート（透過的に渡される）
 	upCmd.Flags().StringVarP(&filePath, "file", "f", "docker-compose.yml", "Docker Composeファイルのパス")
