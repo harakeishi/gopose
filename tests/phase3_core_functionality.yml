@@ -6,44 +6,48 @@ vars:
 steps:
   - desc: "3.1 Setup: Clean any existing override files"
     exec:
-      command: rm -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
     test: |
       current.exit_code == 0
 
   - desc: "3.2 Dry-run should NOT create override file"
     exec:
-      command: ../gopose up --dry-run -f basic-compose.yml
-      workdir: fixtures
+      command: |
+        cd fixtures
+        ../../gopose up --dry-run -f basic-compose.yml
     test: |
       current.exit_code == 0
 
   - desc: "3.3 Verify no override file was created in dry-run"
     exec:
-      command: ls {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        ls {{ vars.override_file }}
     test: |
-      current.exit_code != 0  # File should not exist
+      current.exit_code != 0
 
   - desc: "3.4 Normal run with no conflicts should succeed"
     exec:
-      command: ../gopose up -f basic-compose.yml
-      workdir: fixtures
+      command: |
+        cd fixtures
+        ../../gopose up -f basic-compose.yml
     test: |
       current.exit_code == 0
 
   - desc: "3.5 Check if override file was created (if conflicts exist)"
     exec:
-      command: test -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        test -f {{ vars.override_file }}
     test: |
-      # This may pass or fail depending on actual port conflicts
-      # We'll log the result for analysis
       true
 
   - desc: "3.6 Cleanup: Remove any generated files"
     exec:
-      command: rm -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
     test: |
       current.exit_code == 0

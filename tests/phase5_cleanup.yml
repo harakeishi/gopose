@@ -6,49 +6,52 @@ vars:
 steps:
   - desc: "5.1 Create a dummy override file for cleanup test"
     exec:
-      command: bash -c "echo 'version: \"3.8\"' > {{ vars.override_file }}"
-      workdir: fixtures
+      command: |
+        cd fixtures
+        bash -c "echo 'version: \"3.8\"' > {{ vars.override_file }}"
     test: |
       current.exit_code == 0
 
   - desc: "5.2 Verify override file exists before cleanup"
     exec:
-      command: test -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        test -f {{ vars.override_file }}
     test: |
       current.exit_code == 0
 
   - desc: "5.3 Test gopose clean command (may not be implemented yet)"
     exec:
-      command: ../gopose clean
-      workdir: fixtures
+      command: |
+        cd fixtures
+        ../../gopose clean
     test: |
-      # Clean command might not be implemented yet
-      # We'll accept any reasonable response
       current.exit_code == 0 || 
       current.stderr contains "実装中" ||
       current.stderr contains "not implemented"
 
   - desc: "5.4 Test gopose status command (may not be implemented yet)"
     exec:
-      command: ../gopose status
-      workdir: fixtures 
+      command: |
+        cd fixtures
+        ../../gopose status
     test: |
-      # Status command might not be implemented yet
       current.exit_code == 0 ||
       current.stderr contains "実装中" ||
       current.stderr contains "not implemented"
 
   - desc: "5.5 Manual cleanup: Remove test override file"
     exec:
-      command: rm -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
     test: |
       current.exit_code == 0
 
   - desc: "5.6 Verify cleanup was successful"
     exec:
-      command: test -f {{ vars.override_file }}
-      workdir: fixtures
+      command: |
+        cd fixtures
+        test -f {{ vars.override_file }}
     test: |
-      current.exit_code != 0  # File should not exist
+      current.exit_code != 0
