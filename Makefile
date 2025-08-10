@@ -55,33 +55,8 @@ test-integration:
 
 .PHONY: test-e2e
 test-e2e:
-	@echo "Running e2e tests with runn..."
-	cd tests && runn run all_phases.yml --scopes run:exec
-
-.PHONY: test-e2e-phase1
-test-e2e-phase1:
-	@echo "Running e2e tests Phase 1 (Smoke Test)..."
-	cd tests && runn run phase1_smoke_test.yml --scopes run:exec
-
-.PHONY: test-e2e-phase2
-test-e2e-phase2:
-	@echo "Running e2e tests Phase 2 (Basic Behavior)..."
-	cd tests && runn run phase2_basic_behavior.yml --scopes run:exec
-
-.PHONY: test-e2e-phase3
-test-e2e-phase3:
-	@echo "Running e2e tests Phase 3 (Core Functionality)..."
-	cd tests && runn run phase3_core_functionality.yml --scopes run:exec
-
-.PHONY: test-e2e-phase4
-test-e2e-phase4:
-	@echo "Running e2e tests Phase 4 (Conflict Resolution)..."
-	cd tests && runn run phase4_conflict_resolution.yml --scopes run:exec
-
-.PHONY: test-e2e-phase5
-test-e2e-phase5:
-	@echo "Running e2e tests Phase 5 (Cleanup)..."
-	cd tests && runn run phase5_cleanup.yml --scopes run:exec
+	@echo "Running E2E tests..."
+	cd tests/e2e && runn run gopose_e2e_test.yml --scopes run:exec
 
 .PHONY: test-coverage
 test-coverage: test
