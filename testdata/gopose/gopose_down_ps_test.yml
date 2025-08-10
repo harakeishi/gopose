@@ -1,0 +1,27 @@
+desc: "gopose down/ps --with option E2E Test Suite"
+
+vars:
+  override_file: "docker-compose.override.yml"
+
+steps:
+  # ps コマンドが --with オプションをサポート
+  - desc: "ps command supports --with option"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../build/gopose ps -f main-compose.yml --with db-compose.yml --with redis-compose.yml 2>&1
+        rm -f {{ vars.override_file }}
+    test: |
+      current.exit_code == 0
+      
+  # down コマンドが --with オプションをサポート
+  - desc: "down command supports --with option"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../build/gopose down -f main-compose.yml --with db-compose.yml --with redis-compose.yml 2>&1
+        rm -f {{ vars.override_file }}
+    test: |
+      current.exit_code == 0

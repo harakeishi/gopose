@@ -9,7 +9,7 @@ steps:
       command: |
         cd fixtures
         rm -f {{ vars.override_file }}
-        ../../../gopose up --dry-run -f no-conflict.yml
+        ../../../build/gopose up --dry-run -f no-conflict.yml
         # Verify no file created in dry-run
         ! test -f {{ vars.override_file }}
     test: |
@@ -20,7 +20,7 @@ steps:
       command: |
         cd fixtures
         rm -f {{ vars.override_file }}
-        ../../../gopose up -f no-conflict.yml
+        ../../../build/gopose up -f no-conflict.yml
         # Cleanup any generated files
         rm -f {{ vars.override_file }}
     test: |
@@ -36,7 +36,7 @@ steps:
         
         # Test conflict resolution
         cd fixtures
-        ../../../gopose up -f port-conflict.yml --verbose
+        ../../../build/gopose up -f port-conflict.yml --verbose
         
         # Cleanup
         kill $(cat /tmp/gopose_test.pid) 2>/dev/null || true

@@ -59,6 +59,8 @@ func init() {
 
 	// 各サブコマンドをルートコマンドに追加
 	rootCmd.AddCommand(upCmd)
+	rootCmd.AddCommand(downCmd)
+	rootCmd.AddCommand(psCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(statusCmd)
 }

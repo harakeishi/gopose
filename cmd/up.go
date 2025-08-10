@@ -10,10 +10,12 @@ import (
 	"strings"
 
 	"github.com/harakeishi/gopose/internal/generator"
+	"github.com/harakeishi/gopose/internal/logger"
 	"github.com/harakeishi/gopose/internal/parser"
 	"github.com/harakeishi/gopose/internal/scanner"
 	"github.com/harakeishi/gopose/pkg/types"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -24,6 +26,7 @@ var (
 	outputFile         string
 	skipComposeUp      bool
 	composeProjectName string
+	withComposeFiles   []string
 )
 
 // parsePortRange はポート範囲文字列を解析します。
@@ -263,6 +266,171 @@ func getServiceNetworkIPs(config *types.ComposeConfig, networkName string) map[s
 	return result
 }
 
+// mergeComposeFiles はdocker compose configを使って複数のComposeファイルを統合します
+func mergeComposeFiles(ctx context.Context, mainFile string, withFiles []string, logger logger.Logger) (*types.ComposeConfig, error) {
+	// パスの絶対化と検証
+	absMainFile, err := filepath.Abs(mainFile)
+	if err != nil {
+		return nil, fmt.Errorf("メインファイルのパス解決に失敗: %w", err)
+	}
+	
+	// 事前にサービス名の重複をチェック
+	allFiles := append([]string{absMainFile}, withFiles...)
+	if err := checkServiceNameDuplication(allFiles); err != nil {
+		return nil, err
+	}
+	
+	// docker compose configコマンドの構築
+	args := []string{"compose", "-f", absMainFile}
+	
+	// withファイルを追加
+	for _, withFile := range withFiles {
+		absWithFile, err := filepath.Abs(withFile)
+		if err != nil {
+			return nil, fmt.Errorf("依存ファイル %s のパス解決に失敗: %w", withFile, err)
+		}
+		
+		// ファイルの存在確認
+		if _, err := os.Stat(absWithFile); err != nil {
+			return nil, fmt.Errorf("依存ファイル %s が見つかりません: %w", withFile, err)
+		}
+		
+		args = append(args, "-f", absWithFile)
+	}
+	
+	// configコマンドを追加
+	args = append(args, "config")
+	
+	// docker compose configを実行
+	cmd := exec.Command("docker", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("docker compose config実行エラー: %s", string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("docker compose config実行に失敗: %w", err)
+	}
+	
+	// 統合されたYAMLをパース
+	yamlParser := parser.NewYamlComposeParser(logger)
+	config, err := yamlParser.ParseFromBytes(ctx, output)
+	if err != nil {
+		return nil, fmt.Errorf("統合YAMLの解析に失敗: %w", err)
+	}
+	
+	// バリデーション: 依存ファイルのサービスに制限をチェック
+	if err := validateWithServices(config, withFiles); err != nil {
+		return nil, err
+	}
+	
+	return config, nil
+}
+
+// validateWithServices は依存ファイルのサービスが制限に従っているか検証します
+func validateWithServices(config *types.ComposeConfig, withFiles []string) error {
+	// 各依存ファイルを個別に解析してバリデーション
+	for _, withFile := range withFiles {
+		// ファイル読み込み
+		data, err := os.ReadFile(withFile)
+		if err != nil {
+			return fmt.Errorf("依存ファイル %s の読み込みに失敗: %w", withFile, err)
+		}
+		
+		// YAML解析 (生のデータを使用)
+		var rawCompose map[string]interface{}
+		if err := yaml.Unmarshal(data, &rawCompose); err != nil {
+			return fmt.Errorf("依存ファイル %s のYAML解析に失敗: %w", withFile, err)
+		}
+		
+		// サービスセクションの取得
+		servicesRaw, ok := rawCompose["services"]
+		if !ok {
+			continue // サービスがない場合はスキップ
+		}
+		
+		services, ok := servicesRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		
+		// 各サービスをチェック
+		for serviceName, serviceRaw := range services {
+			service, ok := serviceRaw.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			
+			// buildフィールドのチェック
+			if _, hasBuild := service["build"]; hasBuild {
+				return fmt.Errorf("依存ファイル %s のサービス '%s' にbuildフィールドが含まれています。依存サービスはimageベースである必要があります", withFile, serviceName)
+			}
+			
+			// container_nameフィールドのチェック
+			if _, hasContainerName := service["container_name"]; hasContainerName {
+				return fmt.Errorf("依存ファイル %s のサービス '%s' にcontainer_nameが含まれています。固定コンテナ名は使用できません", withFile, serviceName)
+			}
+			
+			// profilesフィールドのチェック
+			if _, hasProfiles := service["profiles"]; hasProfiles {
+				return fmt.Errorf("依存ファイル %s のサービス '%s' にprofilesが含まれています。profilesは現在サポートされていません", withFile, serviceName)
+			}
+			
+			// extendsフィールドのチェック
+			if _, hasExtends := service["extends"]; hasExtends {
+				return fmt.Errorf("依存ファイル %s のサービス '%s' にextendsが含まれています。extendsは現在サポートされていません", withFile, serviceName)
+			}
+			
+			// imageフィールドの確認 (buildがない場合は必須)
+			if _, hasImage := service["image"]; !hasImage {
+				return fmt.Errorf("依存ファイル %s のサービス '%s' にimageフィールドがありません。依存サービスはimageを指定する必要があります", withFile, serviceName)
+			}
+		}
+	}
+	
+	return nil
+}
+
+// checkServiceNameDuplication は複数のComposeファイル間でサービス名の重複をチェックします
+func checkServiceNameDuplication(files []string) error {
+	serviceNames := make(map[string]string) // サービス名 -> ファイル名
+	
+	for _, file := range files {
+		// ファイル読み込み
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("ファイル %s の読み込みに失敗: %w", file, err)
+		}
+		
+		// YAML解析
+		var rawCompose map[string]interface{}
+		if err := yaml.Unmarshal(data, &rawCompose); err != nil {
+			return fmt.Errorf("ファイル %s のYAML解析に失敗: %w", file, err)
+		}
+		
+		// サービスセクションの取得
+		servicesRaw, ok := rawCompose["services"]
+		if !ok {
+			continue
+		}
+		
+		services, ok := servicesRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		
+		// サービス名の重複チェック
+		for serviceName := range services {
+			if existingFile, exists := serviceNames[serviceName]; exists {
+				return fmt.Errorf("サービス名 '%s' が重複しています (ファイル: %s と %s)", 
+					serviceName, filepath.Base(existingFile), filepath.Base(file))
+			}
+			serviceNames[serviceName] = file
+		}
+	}
+	
+	return nil
+}
+
 // allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
 func allocateNewSubnet(used map[string]bool) string {
 	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
@@ -410,11 +578,28 @@ var upCmd = &cobra.Command{
 			logger.Info(ctx, "Docker Composeファイルを自動検出", types.Field{Key: "file", Value: filePath})
 		}
 
-		// Docker Composeファイルの解析
-		yamlParser := parser.NewYamlComposeParser(logger)
-		config, err := yamlParser.ParseComposeFile(ctx, filePath)
-		if err != nil {
-			return fmt.Errorf("Docker Composeファイルの解析に失敗: %w", err)
+		var config *types.ComposeConfig
+		
+		// --withオプションが指定されている場合は統合処理
+		if len(withComposeFiles) > 0 {
+			logger.Info(ctx, "--withオプションで複数Composeファイルを統合",
+				types.Field{Key: "main_file", Value: filePath},
+				types.Field{Key: "with_files", Value: withComposeFiles})
+			
+			// docker compose configで統合
+			mergedConfig, err := mergeComposeFiles(ctx, filePath, withComposeFiles, logger)
+			if err != nil {
+				return fmt.Errorf("Composeファイルの統合に失敗: %w", err)
+			}
+			config = mergedConfig
+		} else {
+			// 既存の単一ファイル処理
+			yamlParser := parser.NewYamlComposeParser(logger)
+			parsedConfig, err := yamlParser.ParseComposeFile(ctx, filePath)
+			if err != nil {
+				return fmt.Errorf("Docker Composeファイルの解析に失敗: %w", err)
+			}
+			config = parsedConfig
 		}
 
 		// 統一的な衝突検知の実行
@@ -538,6 +723,7 @@ func init() {
 	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: docker-compose.override.yml)")
 	upCmd.Flags().BoolVar(&dryRun, "dry-run", false, "ドライラン（override.yml生成のみ、Docker Composeは実行しない）")
 	upCmd.Flags().BoolVar(&skipComposeUp, "skip-compose-up", false, "[非推奨] このオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
+	upCmd.Flags().StringSliceVar(&withComposeFiles, "with", []string{}, "依存するDocker Composeファイル (複数指定可能)")
 
 	// Docker Composeオプションもサポート（透過的に渡される）
 	upCmd.Flags().StringVarP(&filePath, "file", "f", "docker-compose.yml", "Docker Composeファイルのパス")

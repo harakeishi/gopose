@@ -1,0 +1,104 @@
+desc: "gopose --with option E2E Test Suite"
+
+vars:
+  override_file: "docker-compose.override.yml"
+
+steps:
+  # 基本動作: --withで複数ファイルを統合
+  - desc: "Basic --with option merges multiple compose files"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../build/gopose up -f main-compose.yml --with db-compose.yml --with redis-compose.yml --dry-run
+    test: |
+      current.exit_code == 0
+
+  # ポート衝突の自動解決
+  - desc: "Port conflicts are resolved with --with option"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        # DBと同じポートを使うサービスを作成
+        cat > conflicting-service.yml << 'EOF'
+        version: '3.8'
+        services:
+          another-db:
+            image: postgres:13
+            ports:
+              - "5432:5432"
+        EOF
+        ../../../build/gopose up -f db-compose.yml --with conflicting-service.yml --verbose
+        rm -f conflicting-service.yml {{ vars.override_file }}
+    test: |
+      current.exit_code == 0
+
+  # バリデーション: buildフィールドがあるとエラー
+  - desc: "Service with build field causes error"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        cat > with-build.yml << 'EOF'
+        version: '3.8'
+        services:
+          custom:
+            build: .
+            ports:
+              - "3000:3000"
+        EOF
+        ../../../build/gopose up -f main-compose.yml --with with-build.yml 2>&1
+        rm -f with-build.yml {{ vars.override_file }}
+    test: |
+      current.exit_code != 0
+
+  # バリデーション: container_nameがあるとエラー
+  - desc: "Service with container_name causes error"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        cat > with-container-name.yml << 'EOF'
+        version: '3.8'
+        services:
+          named:
+            image: nginx:alpine
+            container_name: fixed-name
+            ports:
+              - "9000:80"
+        EOF
+        ../../../build/gopose up -f main-compose.yml --with with-container-name.yml 2>&1
+        rm -f with-container-name.yml {{ vars.override_file }}
+    test: |
+      current.exit_code != 0
+
+  # バリデーション: サービス名重複でエラー
+  - desc: "Duplicate service name causes error"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        cat > duplicate-service.yml << 'EOF'
+        version: '3.8'
+        services:
+          web:
+            image: httpd:alpine
+            ports:
+              - "8081:80"
+        EOF
+        ../../../build/gopose up -f main-compose.yml --with duplicate-service.yml 2>&1
+        rm -f duplicate-service.yml {{ vars.override_file }}
+    test: |
+      current.exit_code != 0
+
+  # --withなしでは既存の動作が変わらない
+  - desc: "Without --with option, behavior unchanged"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../build/gopose up -f no-conflict.yml
+        rm -f {{ vars.override_file }}
+    test: |
+      current.exit_code == 0

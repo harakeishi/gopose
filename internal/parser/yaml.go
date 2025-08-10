@@ -81,6 +81,32 @@ func (p *YamlComposeParser) ParseComposeFile(ctx context.Context, filepath strin
 	return config, nil
 }
 
+// ParseFromBytes はバイト配列からDocker Compose設定を解析します。
+func (p *YamlComposeParser) ParseFromBytes(ctx context.Context, data []byte) (*types.ComposeConfig, error) {
+	p.logger.Debug(ctx, "バイト配列からのDocker Compose解析開始")
+
+	// YAML解析
+	var rawCompose map[string]interface{}
+	if err := yaml.Unmarshal(data, &rawCompose); err != nil {
+		return nil, &errors.AppError{
+			Code:    errors.ErrParseFailed,
+			Message: "YAMLの解析に失敗しました",
+			Cause:   err,
+		}
+	}
+
+	// ComposeConfigに変換
+	config, err := p.convertToComposeConfig(ctx, rawCompose, "merged")
+	if err != nil {
+		return nil, err
+	}
+
+	p.logger.Info(ctx, "バイト配列からのDocker Compose解析完了",
+		types.Field{Key: "services_count", Value: len(config.Services)})
+
+	return config, nil
+}
+
 // ParseServicePorts はサービスのポート設定を解析します。
 func (p *YamlComposeParser) ParseServicePorts(ctx context.Context, service map[string]interface{}) ([]types.PortMapping, error) {
 	portsInterface, exists := service["ports"]

@@ -73,6 +73,28 @@ gopose up
 
 ### 高度な使用方法
 
+#### 依存Composeファイルの統合 (--with オプション)
+
+複数のDocker Composeファイルを統合して起動できます。ポート衝突は自動的に解決されます。
+
+```bash
+# 複数のComposeファイルを統合
+gopose up --with ../db/compose.yml --with ../redis/compose.yml
+
+# メインファイルを指定して統合
+gopose up -f main-compose.yml --with db-compose.yml --with redis-compose.yml
+
+# down/psコマンドでも同様に使用可能
+gopose down --with ../db/compose.yml --with ../redis/compose.yml
+gopose ps --with ../db/compose.yml --with ../redis/compose.yml
+```
+
+**制限事項:**
+- 依存ファイルのサービスは `image` ベースである必要があります（`build` は使用不可）
+- `container_name` の指定は使用できません
+- サービス名の重複は許可されません
+- `profiles` と `extends` は現在サポートされていません
+
 #### ファイル指定とポート範囲設定
 
 ```bash
