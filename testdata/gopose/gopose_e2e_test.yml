@@ -29,8 +29,9 @@ steps:
   - desc: "Port conflict resolution works"
     exec:
       command: |
-        # Create port conflict on 8080
-        python3 -m http.server 8080 > /dev/null 2>&1 & echo $! > /tmp/gopose_test.pid
+        # Build and run Go port occupier
+        go build -o occupy_port occupy_port.go
+        ./occupy_port 8080 > /dev/null 2>&1 & echo $! > /tmp/gopose_test.pid
         sleep 2
         
         # Test conflict resolution
@@ -39,6 +40,6 @@ steps:
         
         # Cleanup
         kill $(cat /tmp/gopose_test.pid) 2>/dev/null || true
-        rm -f /tmp/gopose_test.pid {{ vars.override_file }}
+        rm -f /tmp/gopose_test.pid {{ vars.override_file }} occupy_port
     test: |
       current.exit_code == 0

@@ -27,5 +27,5 @@ make test-e2e
 ## Requirements
 
 - [runn](https://github.com/k1LoW/runn) CLI testing framework
-- Python 3 (for port conflict simulation) 
+- Go toolchain (for building port conflict simulator)
 - Built gopose binary at project root
