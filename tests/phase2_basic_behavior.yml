@@ -1,0 +1,29 @@
+desc: "Phase 2: Does gopose behave? (Basic Behavior)"
+
+steps:
+  - desc: "2.1 Run gopose without arguments shows help"
+    exec:
+      command: ../gopose
+      workdir: fixtures
+    test: |
+      current.exit_code == 0 &&
+      current.stdout contains "gopose" &&
+      current.stdout contains "up" &&
+      current.stdout contains "clean" &&
+      current.stdout contains "status"
+
+  - desc: "2.2 Run gopose up --help shows up command help"
+    exec:
+      command: ../gopose up --help
+      workdir: fixtures
+    test: |
+      current.exit_code == 0 &&
+      current.stdout contains "ポート衝突" &&
+      current.stdout contains "docker-compose.override.yml"
+
+  - desc: "2.3 Run gopose with invalid command shows error"
+    exec:
+      command: ../gopose invalid-command
+      workdir: fixtures
+    test: |
+      current.exit_code != 0
