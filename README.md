@@ -154,48 +154,48 @@ resolver:
 
 ```
 $ gopose up
-Starting port conflict resolution
-Starting Docker Compose file detection
-Docker Compose file found
-Docker Compose file detection completed
-Auto-detected Docker Compose file
-Starting Docker Compose file parsing
-Docker Compose version not specified
-Docker Compose file parsing completed
-Starting port conflict detection
-Starting port scan using netstat
-Port scan completed
-System port conflict detected
-Port conflict detection completed
-Port conflict detection completed
-Starting port conflict resolution
-Starting port scan using netstat
-Port scan completed
-In-range port filtering completed
-Port allocation successful
-Starting solution optimization
-Solution optimization completed
-Port conflict resolution completed
-Port resolved
-Starting override generation
-Port mapping updated
-Override generation completed
-Starting override validation
-Override version not specified, but allowed as it's deprecated in latest Docker Compose versions
-Override validation completed
-Starting override file write
-Override file write completed
-Override.yml file generated
-Existing Docker networks detected
-Docker Compose network configuration detected
-Network subnet conflict detected
-Network subnet conflict resolved
-Stopping existing containers before starting Docker Compose
+ポート衝突解決を開始
+Docker Composeファイル検出開始
+Docker Composeファイル発見
+Docker Composeファイル検出完了
+Docker Composeファイルを自動検出
+Docker Composeファイル解析開始
+Docker Composeバージョンが指定されていません
+Docker Composeファイル解析完了
+ポート衝突検出開始
+netstatを使用してポートスキャンを開始
+ポートスキャン完了
+システムポート衝突検出
+ポート衝突検出完了
+ポート衝突検出完了
+ポート衝突解決開始
+netstatを使用してポートスキャンを開始
+ポートスキャン完了
+範囲内ポートフィルタリング完了
+ポート割り当て成功
+解決案最適化開始
+解決案最適化完了
+ポート衝突解決完了
+ポート解決
+Override生成開始
+ポートマッピング更新
+Override生成完了
+Override検証開始
+Overrideのバージョンが指定されていませんが、Docker Composeの最新バージョンでは非推奨のため許可します
+Override検証完了
+Overrideファイル書き込み開始
+Overrideファイル書き込み完了
+Override.ymlファイルが生成されました
+既存Dockerネットワークを検出しました
+Docker Composeネットワーク設定を検出
+ネットワークサブネット競合を検出
+ネットワークサブネット競合を解決
+既存のコンテナを停止してからDocker Composeを起動
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.0s
  ✔ Network gopose_default  Removed                                                                                         0.2s
-Starting Docker Compose
-Executing Docker Compose
+Docker Composeを起動
+Docker Composeを実行
 [+] Running 2/2
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
@@ -206,33 +206,33 @@ Attaching to web-1
 
 ```
 $ gopose up --detail
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Starting port conflict resolution" component=gopose timestamp=2025-06-10T23:31:03.178+09:00 dry_run=false compose_file=docker-compose.yml output_file="" strategy=auto port_range=8000-9999 skip_compose_up=false
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Compose file detection completed" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 directory=/Users/keishi.hara/src/github.com/harakeishi/gopose found_count=1
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Auto-detected Docker Compose file" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml
-time=2025-06-10T23:31:03.180+09:00 level=WARN msg="Docker Compose version not specified" component=gopose timestamp=2025-06-10T23:31:03.180+09:00
-time=2025-06-10T23:31:03.180+09:00 level=INFO msg="Docker Compose file parsing completed" component=gopose timestamp=2025-06-10T23:31:03.180+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml services_count=1
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port scan completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 found_ports_count=18
-time=2025-06-10T23:31:03.191+09:00 level=WARN msg="System port conflict detected" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 port=3000 service=web
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port conflict detection completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port conflict detection completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port scan completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 found_ports_count=18
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Solution optimization completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 original_count=1 optimized_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port conflict resolution completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 resolved_conflicts=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port resolved" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 service=web from=3000 to=8001 reason="Automatic port change from 3000 to 8001"
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Existing Docker networks detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=3
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Docker Compose network configuration detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=1
-time=2025-06-10T23:31:03.205+09:00 level=WARN msg="Network subnet conflict detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default conflicting_subnet="172.20.0.0/24"
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Network subnet conflict resolved" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override generation completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override validation completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override file write completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override.yml file generated" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=docker-compose.override.yml
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Stopping existing containers before starting Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg=ポート衝突解決を開始 component=gopose timestamp=2025-06-10T23:31:03.178+09:00 dry_run=false compose_file=docker-compose.yml output_file="" strategy=auto port_range=8000-9999 skip_compose_up=false
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Composeファイル検出完了" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 directory=/Users/keishi.hara/src/github.com/harakeishi/gopose found_count=1
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Composeファイルを自動検出" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml
+time=2025-06-10T23:31:03.180+09:00 level=WARN msg="Docker Composeバージョンが指定されていません" component=gopose timestamp=2025-06-10T23:31:03.180+09:00
+time=2025-06-10T23:31:03.180+09:00 level=INFO msg="Docker Composeファイル解析完了" component=gopose timestamp=2025-06-10T23:31:03.180+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml services_count=1
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポートスキャン完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 found_ports_count=18
+time=2025-06-10T23:31:03.191+09:00 level=WARN msg=システムポート衝突検出 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 port=3000 service=web
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポート衝突検出完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポート衝突検出完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポートスキャン完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 found_ports_count=18
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=解決案最適化完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 original_count=1 optimized_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート衝突解決完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 resolved_conflicts=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート解決 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 service=web from=3000 to=8001 reason="ポート 3000 から 8001 への自動変更"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="既存Dockerネットワークを検出しました" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=3
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Docker Composeネットワーク設定を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=1
+time=2025-06-10T23:31:03.205+09:00 level=WARN msg="ネットワークサブネット競合を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default conflicting_subnet="172.20.0.0/24"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="ネットワークサブネット競合を解決" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override生成完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override検証完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Overrideファイル書き込み完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override.ymlファイルが生成されました component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=docker-compose.override.yml
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="既存のコンテナを停止してからDocker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.2s
  ✔ Network gopose_default  Removed                                                                                         0.2s
-time=2025-06-10T23:31:03.779+09:00 level=INFO msg="Starting Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.779+09:00
-time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Executing Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f docker-compose.override.yml up --force-recreate --remove-orphans"
+time=2025-06-10T23:31:03.779+09:00 level=INFO msg="Docker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.779+09:00
+time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f docker-compose.override.yml up --force-recreate --remove-orphans"
 [+] Running 2/2
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
