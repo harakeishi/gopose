@@ -1,19 +1,18 @@
 package cmd
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
+    "fmt"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strconv"
+    "strings"
 
-	"github.com/harakeishi/gopose/internal/generator"
-	"github.com/harakeishi/gopose/internal/parser"
-	"github.com/harakeishi/gopose/internal/scanner"
-	"github.com/harakeishi/gopose/pkg/types"
-	"github.com/spf13/cobra"
+    "github.com/harakeishi/gopose/internal/generator"
+    "github.com/harakeishi/gopose/internal/parser"
+    "github.com/harakeishi/gopose/internal/scanner"
+    "github.com/harakeishi/gopose/pkg/types"
+    "github.com/spf13/cobra"
 )
 
 var (
@@ -110,231 +109,8 @@ func detectWorktreeProjectName() (string, error) {
 	return topLevelBase, nil
 }
 
-// runDockerCompose はdocker composeコマンドを実行します。
-func runDockerCompose(ctx *cobra.Command, composeFile, outputFile string, extraArgs []string) error {
-	args := []string{"compose"}
 
-	// compose fileオプションを追加（デフォルトファイル名でない場合のみ）
-	if composeFile != "" && composeFile != "docker-compose.yml" {
-		args = append(args, "-f", composeFile)
-	} else {
-		// デフォルトファイルは明示的に指定
-		args = append(args, "-f", "docker-compose.yml")
-	}
 
-	// override fileが存在する場合は追加
-	if outputFile != "" {
-		if _, err := os.Stat(outputFile); err == nil {
-			args = append(args, "-f", outputFile)
-		}
-	}
-
-	// プロジェクト名が指定されている場合
-	if composeProjectName != "" {
-		args = append(args, "-p", composeProjectName)
-	}
-
-	// upコマンドを追加
-	args = append(args, "up")
-
-	// override.ymlが存在する場合は強制再作成を追加（ユーザーが指定していない場合のみ）
-	if outputFile != "" {
-		if _, err := os.Stat(outputFile); err == nil {
-			if forceRecreate, _ := ctx.Flags().GetBool("force-recreate"); !forceRecreate {
-				args = append(args, "--force-recreate")
-			}
-			// ネットワークとボリュームも再作成
-			if removeOrphans, _ := ctx.Flags().GetBool("remove-orphans"); !removeOrphans {
-				args = append(args, "--remove-orphans")
-			}
-		}
-	}
-
-	// docker composeの共通オプションを処理
-	if detach, _ := ctx.Flags().GetBool("detach"); detach {
-		args = append(args, "-d")
-	}
-
-	if build, _ := ctx.Flags().GetBool("build"); build {
-		args = append(args, "--build")
-	}
-
-	if forceRecreate, _ := ctx.Flags().GetBool("force-recreate"); forceRecreate {
-		args = append(args, "--force-recreate")
-	}
-
-	if noDeps, _ := ctx.Flags().GetBool("no-deps"); noDeps {
-		args = append(args, "--no-deps")
-	}
-
-	if removeOrphans, _ := ctx.Flags().GetBool("remove-orphans"); removeOrphans {
-		args = append(args, "--remove-orphans")
-	}
-
-	if scale, _ := ctx.Flags().GetString("scale"); scale != "" {
-		for _, scaleOption := range strings.Split(scale, ",") {
-			args = append(args, "--scale", strings.TrimSpace(scaleOption))
-		}
-	}
-
-	if envFiles, _ := ctx.Flags().GetStringSlice("env-file"); len(envFiles) > 0 {
-		for _, envFile := range envFiles {
-			args = append(args, "--env-file", envFile)
-		}
-	}
-
-	if abortOnExit, _ := ctx.Flags().GetBool("abort-on-container-exit"); abortOnExit {
-		args = append(args, "--abort-on-container-exit")
-	}
-
-	if exitCodeFrom, _ := ctx.Flags().GetString("exit-code-from"); exitCodeFrom != "" {
-		args = append(args, "--exit-code-from", exitCodeFrom)
-	}
-
-	if timeout, _ := ctx.Flags().GetDuration("timeout"); timeout > 0 {
-		args = append(args, "--timeout", fmt.Sprintf("%.0f", timeout.Seconds()))
-	}
-
-	// 追加の引数（サービス名など）を追加
-	args = append(args, extraArgs...)
-
-	// コマンドを実行
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	logger, _ := getLogger(getConfig())
-	logger.Info(ctx.Context(), "Docker Composeを実行",
-		types.Field{Key: "command", Value: fmt.Sprintf("docker %s", strings.Join(args, " "))})
-
-	return cmd.Run()
-}
-
-// stopExistingContainers は既存のコンテナを停止・削除します。
-func stopExistingContainers(ctx context.Context, composeFile string) error {
-	args := []string{"compose"}
-
-	// compose fileオプションを追加
-	if composeFile != "" {
-		args = append(args, "-f", composeFile)
-	}
-
-	// プロジェクト名が指定されている場合は追加
-	if composeProjectName != "" {
-		args = append(args, "-p", composeProjectName)
-	}
-
-	// downコマンドを追加（コンテナを停止・削除）
-	args = append(args, "down")
-
-	// コマンドを実行
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
-}
-
-// detectNetworkSubnets collects all subnets configured in Compose file
-func getComposeSubnets(config *types.ComposeConfig) map[string]string {
-	result := make(map[string]string)
-	for name, netCfg := range config.Networks {
-		for _, ipCfg := range netCfg.IPAM.Config {
-			if ipCfg.Subnet != "" {
-				result[name] = ipCfg.Subnet
-				break
-			}
-		}
-	}
-	return result
-}
-
-// getServiceNetworkIPs は指定されたネットワークを使用するサービスのIPアドレスを抽出します
-func getServiceNetworkIPs(config *types.ComposeConfig, networkName string) map[string]string {
-	result := make(map[string]string)
-	for serviceName, service := range config.Services {
-		if networkConfig, exists := service.Networks[networkName]; exists {
-			if networkConfig.IPv4Address != "" {
-				result[serviceName] = networkConfig.IPv4Address
-			}
-		}
-	}
-	return result
-}
-
-// allocateNewSubnet returns first available subnet from safe ranges, avoiding common conflicts
-func allocateNewSubnet(used map[string]bool) string {
-	// Priority order: 10.x.x.x/24 > 192.168.x.x/24 > 172.x.x.x/24
-
-	// 1. Try 10.x.x.x/24 range (safe for most environments)
-	for i := 20; i < 255; i++ { // Skip common ranges like 10.0.x.x, 10.1.x.x
-		for j := 0; j < 255; j++ {
-			candidate := fmt.Sprintf("10.%d.%d.0/24", i, j)
-			if !used[candidate] {
-				return candidate
-			}
-		}
-	}
-
-	// 2. Try 192.168.x.x/24 range (commonly used but safer than 172.x.x.x)
-	for i := 100; i < 255; i++ { // Skip common home router ranges
-		candidate := fmt.Sprintf("192.168.%d.0/24", i)
-		if !used[candidate] {
-			return candidate
-		}
-	}
-
-	// 3. Try 172.x.x.x/24 range (last resort, more likely to conflict)
-	for i := 30; i < 100; i++ { // Skip Docker's default range 172.17-29.x.x
-		for j := 0; j < 255; j++ {
-			candidate := fmt.Sprintf("172.%d.%d.0/24", i, j)
-			if !used[candidate] {
-				return candidate
-			}
-		}
-	}
-
-	return "" // No available subnet found
-}
-
-// remapIPAddressesToNewSubnet は既存のIPアドレスを新しいサブネットに再マップします
-func remapIPAddressesToNewSubnet(oldSubnet, newSubnet string, serviceIPs map[string]string) (map[string]string, error) {
-	// サブネットから基底アドレスを取得
-	parts := strings.Split(oldSubnet, "/")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("無効なサブネット形式: %s", oldSubnet)
-	}
-	oldBase := parts[0]
-
-	newParts := strings.Split(newSubnet, "/")
-	if len(newParts) != 2 {
-		return nil, fmt.Errorf("無効なサブネット形式: %s", newSubnet)
-	}
-	newBase := newParts[0]
-
-	// 既存の基底アドレスと新しい基底アドレスを取得
-	oldBaseIP := strings.Split(oldBase, ".")
-	newBaseIP := strings.Split(newBase, ".")
-
-	if len(oldBaseIP) != 4 || len(newBaseIP) != 4 {
-		return nil, fmt.Errorf("無効なIPアドレス形式")
-	}
-
-	newIPs := make(map[string]string)
-	for service, oldIP := range serviceIPs {
-		oldIPParts := strings.Split(oldIP, ".")
-		if len(oldIPParts) != 4 {
-			continue // 無効なIPはスキップ
-		}
-
-		// 新しいIPアドレスを生成（最後のオクテットのみ保持）
-		newIP := fmt.Sprintf("%s.%s.%s.%s", newBaseIP[0], newBaseIP[1], newBaseIP[2], oldIPParts[3])
-		newIPs[service] = newIP
-	}
-
-	return newIPs, nil
-}
 
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
@@ -379,7 +155,7 @@ var upCmd = &cobra.Command{
 
 		// -p オプションが指定されていない場合は、ワークツリー名をプロジェクト名として自動設定
 		if composeProjectName == "" && os.Getenv("COMPOSE_PROJECT_NAME") == "" {
-			if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
+            if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
 				composeProjectName = pn
 				logger.Info(ctx, "ワークツリー名をプロジェクト名として使用",
 					types.Field{Key: "project_name", Value: composeProjectName})
@@ -396,15 +172,15 @@ var upCmd = &cobra.Command{
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
 		if filePath == "" || filePath == "docker-compose.yml" {
-			wd, err := os.Getwd()
+            wd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
 			}
 
 			detector := parser.NewComposeFileDetectorImpl(logger)
-			detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
+            detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
 			if err != nil {
-				return fmt.Errorf("Docker Composeファイルの自動検出に失敗: %w", err)
+                return fmt.Errorf("docker composeファイルの自動検出に失敗: %w", err)
 			}
 			filePath = detectedFile
 			logger.Info(ctx, "Docker Composeファイルを自動検出", types.Field{Key: "file", Value: filePath})
@@ -412,9 +188,9 @@ var upCmd = &cobra.Command{
 
 		// Docker Composeファイルの解析
 		yamlParser := parser.NewYamlComposeParser(logger)
-		config, err := yamlParser.ParseComposeFile(ctx, filePath)
+        config, err := yamlParser.ParseComposeFile(ctx, filePath)
 		if err != nil {
-			return fmt.Errorf("Docker Composeファイルの解析に失敗: %w", err)
+            return fmt.Errorf("docker composeファイルの解析に失敗: %w", err)
 		}
 
 		// 統一的な衝突検知の実行
@@ -481,9 +257,9 @@ var upCmd = &cobra.Command{
 		}
 
 		// 統一的なOverride.ymlの生成
-		override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
+        override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
 		if err != nil {
-			return fmt.Errorf("Overrideファイルの生成に失敗: %w", err)
+            return fmt.Errorf("overrideファイルの生成に失敗: %w", err)
 		}
 
 		// プロジェクト名をoverrideに設定（Docker Composeコマンドの統一のため）
@@ -495,8 +271,8 @@ var upCmd = &cobra.Command{
 
 		// Override.ymlの妥当性検証
 		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
-		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
-			return fmt.Errorf("Overrideファイルの検証に失敗: %w", err)
+        if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
+            return fmt.Errorf("overrideファイルの検証に失敗: %w", err)
 		}
 
 		// 出力ファイル名の決定
@@ -507,8 +283,8 @@ var upCmd = &cobra.Command{
 		// ドライランモードでない場合のみファイル書き込み
 		if !dryRun {
 			// Override.ymlファイルの書き込み
-			if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
-				return fmt.Errorf("Overrideファイルの書き込みに失敗: %w", err)
+            if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
+                return fmt.Errorf("overrideファイルの書き込みに失敗: %w", err)
 			}
 
 			logger.Info(ctx, "Override.ymlファイルが生成されました",
