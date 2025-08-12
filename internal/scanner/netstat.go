@@ -88,7 +88,12 @@ func (n *NetstatPortDetector) IsPortInUse(ctx context.Context, port int) (bool, 
 	tcpAddr := fmt.Sprintf("localhost:%d", port)
 	tcpConn, err := net.DialTimeout("tcp", tcpAddr, timeout)
 	if err == nil {
-		tcpConn.Close()
+		if closeErr := tcpConn.Close(); closeErr != nil {
+			// クローズ時のエラーは致命的ではないためデバッグログに留める
+			n.logger.Debug(ctx, "TCPコネクションのクローズでエラー",
+				types.Field{Key: "port", Value: port},
+				types.Field{Key: "error", Value: closeErr})
+		}
 		return true, nil
 	}
 
@@ -96,7 +101,12 @@ func (n *NetstatPortDetector) IsPortInUse(ctx context.Context, port int) (bool, 
 	udpAddr := fmt.Sprintf("localhost:%d", port)
 	udpConn, err := net.DialTimeout("udp", udpAddr, timeout)
 	if err == nil {
-		udpConn.Close()
+		if closeErr := udpConn.Close(); closeErr != nil {
+			// クローズ時のエラーは致命的ではないためデバッグログに留める
+			n.logger.Debug(ctx, "UDPコネクションのクローズでエラー",
+				types.Field{Key: "port", Value: port},
+				types.Field{Key: "error", Value: closeErr})
+		}
 		return true, nil
 	}
 
