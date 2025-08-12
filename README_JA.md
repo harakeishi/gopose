@@ -1,4 +1,4 @@
-# gopose - Docker Compose Port Conflict Auto-Resolution Tool
+# gopose - Docker Compose ポート衝突自動解決ツール
 
 <div align="center">
   <img src="logo.png" alt="gopose logo" width="200"/>
@@ -8,29 +8,29 @@
   [![Go Report Card](https://goreportcard.com/badge/github.com/harakeishi/gopose?style=for-the-badge)](https://goreportcard.com/report/github.com/harakeishi/gopose)
 </div>
 
-## Overview
+## 概要
 
-**gopose** (Go Port Override Solution Engine) is a tool that automatically detects and resolves Docker Compose port binding and network conflicts.
+**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突とネットワーク衝突を自動検出・解決するツールです。
 
-It generates a `docker-compose.override.yml` without modifying the original `docker-compose.yml`, and automatically deletes the `override.yml` after resolving port and network conflicts.
+元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突・ネットワーク衝突解決後、自動的に `override.yml` を削除します。
 
-### 🎯 Key Features
+### 🎯 主な特徴
 
-- ✅ **Non-destructive**: Does not modify the original `docker-compose.yml` file
-- ✅ **Auto-detection**: Automatically detects conflicts with system ports in use
-- ✅ **Auto-resolution**: Automatically assigns available ports
-- ✅ **Network conflict avoidance**: Automatically detects and avoids Docker network subnet conflicts
-- ✅ **Auto-cleanup**: Automatically deletes `override.yml` on process termination
-- ✅ **SOLID principles**: Designed for maintainability and extensibility
-- ✅ **Structured logging**: Detailed log output and debugging capabilities
-- ✅ **Cross-platform**: Supports Linux, macOS, and Windows
-- ✅ **Parallel processing**: Performs port scanning in parallel
+- ✅ **非破壊的**: 元の `docker-compose.yml` ファイルを変更しません
+- ✅ **自動検出**: システムの使用中ポートとの衝突を自動検出
+- ✅ **自動解決**: 利用可能なポートを自動割り当て
+- ✅ **ネットワーク衝突回避**: Dockerネットワークのサブネット衝突を自動検出・回避
+- ✅ **自動クリーンアップ**: プロセス終了時に `override.yml` を自動削除
+- ✅ **SOLID原則**: 保守性と拡張性を考慮した設計
+- ✅ **構造化ログ**: 詳細なログ出力とデバッグ機能
+- ✅ **クロスプラットフォーム**: Linux、macOS、Windows対応
+- ✅ **並列処理**: ポートスキャンを並列で実施
 
-## Installation
+## インストール
 
-### Binary Releases
+### バイナリリリース
 
-Download the appropriate binary from [GitHub Releases](https://github.com/harakeishi/gopose/releases):
+[GitHub Releases](https://github.com/harakeishi/gopose/releases) から適切なバイナリをダウンロード:
 
 ```bash
 # Linux (amd64)
@@ -52,7 +52,7 @@ unzip gopose.zip
 go install github.com/harakeishi/gopose@latest
 ```
 
-### Build from Source
+### ソースからビルド
 
 ```bash
 git clone https://github.com/harakeishi/gopose.git
@@ -61,66 +61,66 @@ make build
 sudo make install
 ```
 
-## Usage
+## 使用方法
 
-### Basic Usage
+### 基本的な使用方法
 
 ```bash
-# Detect and resolve port/network conflicts and prepare Docker Compose
+# ポート衝突・ネットワーク衝突を検出・解決してDocker Composeを準備
 gopose up
 
 ```
 
-### Advanced Usage
+### 高度な使用方法
 
-#### File Specification and Port Range Settings
+#### ファイル指定とポート範囲設定
 
 ```bash
-# Specify a custom file
+# 特定のファイルを指定
 gopose up -f custom-compose.yml
 
-# Specify port range
+# ポート範囲を指定
 gopose up --port-range 9000-9999
 
-# Specify multiple port ranges
+# 複数のポート範囲を指定
 gopose up --port-range 8000-8999,9000-9999
 ```
 
-#### Exclusion Settings
+#### 除外設定
 
 ```bash
-# Exclude specific services
+# 特定のサービスを除外
 gopose up --exclude-services redis,postgres
 
-# Exclude privileged ports
+# 特権ポートを除外
 gopose up --exclude-privileged
 
-# Exclude reserved ports
+# 予約ポートを除外
 gopose up --exclude-ports 8080,8443,9000
 ```
 
-#### Output and Logging Settings
+#### 出力とログ設定
 
 ```bash
-# Dry run (no actual changes)
+# ドライラン（実際の変更は行わない）
 gopose up --dry-run
 
-# Verbose logging
+# 詳細ログ出力
 gopose up --verbose
 
-# Display with detailed information
-gopose up --detail # Shows timestamps and fields
+# 詳細情報を含めて表示
+gopose up --detail # タイムスタンプやフィールドを含めて表示
 
-# Check status in JSON format
+# JSON形式で状態確認
 gopose status --output json
 
-# Set log level
+# ログレベルを設定
 gopose up --log-level debug
 ```
 
-### Configuration File
+### 設定ファイル
 
-You can place a configuration file (`.gopose.yaml`) in your home or project directory:
+設定ファイル（`.gopose.yaml`）をホームディレクトリまたはプロジェクトディレクトリに配置できます：
 
 ```yaml
 port:
@@ -150,7 +150,7 @@ resolver:
   port_proximity: true
 ```
 
-### Output Example
+### 出力例
 
 ```
 $ gopose up
@@ -202,7 +202,7 @@ Docker Composeを実行
 Attaching to web-1
 ```
 
-#### With --detail flag
+#### detail指定時
 
 ```
 $ gopose up --detail
@@ -239,154 +239,154 @@ time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" comp
 Attaching to web-1
 ```
 
-## Network Conflict Avoidance
+## ネットワーク衝突回避機能
 
-gopose automatically detects subnet conflicts with existing Docker networks and assigns safe alternative subnets.
+goposeは既存のDockerネットワークとのサブネット衝突を自動検出し、安全な代替サブネットを割り当てます。
 
-### Feature Overview
+### 機能概要
 
-- **Auto-detection**: Automatically detects existing Docker network subnets
-- **Conflict avoidance**: Automatically generates safe alternative subnets when Docker Compose-defined network subnets conflict with existing networks
-- **Priority order**: Selects safe subnets in order: `10.x.x.x/24` > `192.168.x.x/24` > `172.x.x.x/24`
-- **Conflict avoidance**: Avoids Docker default ranges (`172.17-29.x.x`) and common home router ranges
+- **自動検出**: 既存のDockerネットワークサブネットを自動検出
+- **衝突回避**: Docker Composeで定義されたネットワークのサブネットが既存ネットワークと衝突する場合、安全な代替サブネットを自動生成
+- **優先順位**: `10.x.x.x/24` > `192.168.x.x/24` > `172.x.x.x/24` の順で安全なサブネットを選択
+- **競合回避**: Dockerのデフォルト範囲（`172.17-29.x.x`）や一般的なホームルーター範囲を回避
 
-### Subnet Assignment Strategy
+### サブネット割り当て戦略
 
-1. **10.x.x.x/24 range**: Safest (starting from `10.20.0.0/24`)
-2. **192.168.x.x/24 range**: Avoids common home router ranges (starting from `192.168.100.0/24`)
-3. **172.x.x.x/24 range**: Last resort (starting from `172.30.0.0/24`, avoiding Docker default ranges)
+1. **10.x.x.x/24 範囲**: 最も安全（`10.20.0.0/24` から開始）
+2. **192.168.x.x/24 範囲**: 一般的なホームルーター範囲を回避（`192.168.100.0/24` から開始）
+3. **172.x.x.x/24 範囲**: 最後の手段（`172.30.0.0/24` から開始、Dockerデフォルト範囲を回避）
 
-### Example
+### 動作例
 
 ```yaml
-# Original docker-compose.yml
+# 元のdocker-compose.yml
 networks:
   app-network:
     ipam:
       config:
-        - subnet: 172.20.0.0/24  # Conflicts with other Docker networks
+        - subnet: 172.20.0.0/24  # 他のDockerネットワークと衝突
 
-# Generated docker-compose.override.yml
+# 生成されるdocker-compose.override.yml
 networks:
   app-network:
     ipam:
       config:
-        - subnet: 10.20.0.0/24  # Automatically changed to safe subnet
+        - subnet: 10.20.0.0/24  # 安全なサブネットに自動変更
 ```
 
-## Directory Structure
+## ディレクトリ構造
 
 ```
 gopose/
-├── cmd/                 # CLI commands
+├── cmd/                 # CLIコマンド
 │   ├── root.go         # Cobra root command + DI container
 │   ├── up.go           # up subcommand
 │   ├── clean.go        # clean subcommand
 │   ├── status.go       # status subcommand
-│   └── wire.go         # Dependency injection configuration (Wire)
-├── internal/           # Internal implementation
-│   ├── app/           # Application layer
-│   ├── scanner/       # Port scanning
-│   ├── parser/        # Docker Compose parsing
-│   ├── resolver/      # Conflict resolution
-│   ├── generator/     # Override generation
-│   ├── file/          # File operations
-│   ├── watcher/       # Process monitoring
-│   ├── cleanup/       # Auto-cleanup
-│   ├── config/        # Configuration management
-│   ├── logger/        # Logging functionality
-│   └── errors/        # Error handling
-├── pkg/               # Public packages
-│   ├── types/         # Type definitions
-│   └── testutil/      # Test utilities
-├── test/              # Tests
-│   ├── unit/          # Unit tests
-│   ├── integration/   # Integration tests
-│   └── e2e/           # E2E tests
-├── docs/              # Documentation
-├── scripts/           # Scripts
-└── deployments/       # Deployment configurations
+│   └── wire.go         # 依存性注入設定 (Wire)
+├── internal/           # 内部実装
+│   ├── app/           # アプリケーション層
+│   ├── scanner/       # ポートスキャン
+│   ├── parser/        # Docker Compose解析
+│   ├── resolver/      # 衝突解決
+│   ├── generator/     # Override生成
+│   ├── file/          # ファイル操作
+│   ├── watcher/       # プロセス監視
+│   ├── cleanup/       # 自動クリーンアップ
+│   ├── config/        # 設定管理
+│   ├── logger/        # ログ機能
+│   └── errors/        # エラーハンドリング
+├── pkg/               # 公開パッケージ
+│   ├── types/         # 型定義
+│   └── testutil/      # テストユーティリティ
+├── test/              # テスト
+│   ├── unit/          # 単体テスト
+│   ├── integration/   # 統合テスト
+│   └── e2e/           # E2Eテスト
+├── docs/              # ドキュメント
+├── scripts/           # スクリプト
+└── deployments/       # デプロイメント設定
 ```
 
-## Development
+## 開発
 
-### Development Environment Setup
+### 開発環境セットアップ
 
 ```bash
-# Clone repository
+# リポジトリをクローン
 git clone https://github.com/harakeishi/gopose.git
 cd gopose
 
-# Install dependencies
+# 依存関係のインストール
 make deps
 
-# Development build
+# 開発用ビルド
 make dev
 
-# Run tests
+# テスト実行
 make test
 
-# Code quality check
+# コード品質チェック
 make check
 ```
 
-### Make Tasks
+### Make タスク
 
 ```bash
-# Build
-make build              # Regular build
-make build-all          # Build for all platforms
-make dev                # Development build
+# ビルド
+make build              # 通常ビルド
+make build-all          # 全プラットフォーム向けビルド
+make dev                # 開発用ビルド
 
-# Testing
-make test               # Run all tests
-make test-unit          # Unit tests
-make test-integration   # Integration tests
-make test-e2e           # E2E tests
-make test-coverage      # Generate coverage
+# テスト
+make test               # 全テスト実行
+make test-unit          # 単体テスト
+make test-integration   # 統合テスト
+make test-e2e           # E2Eテスト
+make test-coverage      # カバレッジ生成
 
-# Code Quality
-make fmt                # Code formatting
-make lint               # Run linter
-make vet                # Run go vet
-make check              # Run all checks
+# コード品質
+make fmt                # コードフォーマット
+make lint               # リンター実行
+make vet                # go vet実行
+make check              # 全チェック実行
 
-# Development
-make run                # Execute
-make clean              # Clean up
-make deps               # Install dependencies
+# 開発
+make run                # 実行
+make clean              # クリーンアップ
+make deps               # 依存関係インストール
 
-# Release
-make release            # Release build
-make docker-build       # Docker image build
+# リリース
+make release            # リリースビルド
+make docker-build       # Dockerイメージビルド
 ```
 
-### Testing
+### テスト
 
 ```bash
-# Run all tests
+# 全テスト実行
 go test ./...
 
-# Test with coverage
+# カバレッジ付きテスト
 go test -race -coverprofile=coverage.out ./...
 
-# Benchmark tests
+# ベンチマークテスト
 go test -bench=. ./...
 
-# Run specific tests only
+# 特定のテストのみ実行
 go test -run TestPortScanner ./internal/scanner/
 ```
 
-## License
+## ライセンス
 
-This project is published under the [MIT License](LICENSE).
+このプロジェクトは [MIT License](LICENSE) の下で公開されています。
 ---
 
 <div align="center">
   <p>Developed by <a href="https://github.com/harakeishi">harakeishi</a></p>
   <p>
-    <a href="https://github.com/harakeishi/gopose/issues">🐛 Bug Reports</a> •
-    <a href="https://github.com/harakeishi/gopose/discussions">💬 Discussions</a> •
+    <a href="https://github.com/harakeishi/gopose/issues">🐛 バグ報告</a> •
+    <a href="https://github.com/harakeishi/gopose/discussions">💬 ディスカッション</a> •
     <a href="https://github.com/harakeishi/gopose/wiki">📖 Wiki</a>
   </p>
 </div>
