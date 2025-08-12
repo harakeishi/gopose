@@ -1,4 +1,4 @@
-# gopose - Docker Compose ポート衝突自動解決ツール
+# gopose - Docker Compose Port Conflict Auto-Resolution Tool
 
 <div align="center">
   <img src="logo.png" alt="gopose logo" width="200"/>
@@ -8,29 +8,29 @@
   [![Go Report Card](https://goreportcard.com/badge/github.com/harakeishi/gopose?style=for-the-badge)](https://goreportcard.com/report/github.com/harakeishi/gopose)
 </div>
 
-## 概要
+## Overview
 
-**gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突とネットワーク衝突を自動検出・解決するツールです。
+**gopose** (Go Port Override Solution Engine) is a tool that automatically detects and resolves Docker Compose port binding and network conflicts.
 
-元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突・ネットワーク衝突解決後、自動的に `override.yml` を削除します。
+It generates a `docker-compose.override.yml` without modifying the original `docker-compose.yml`, and automatically deletes the `override.yml` after resolving port and network conflicts.
 
-### 🎯 主な特徴
+### 🎯 Key Features
 
-- ✅ **非破壊的**: 元の `docker-compose.yml` ファイルを変更しません
-- ✅ **自動検出**: システムの使用中ポートとの衝突を自動検出
-- ✅ **自動解決**: 利用可能なポートを自動割り当て
-- ✅ **ネットワーク衝突回避**: Dockerネットワークのサブネット衝突を自動検出・回避
-- ✅ **自動クリーンアップ**: プロセス終了時に `override.yml` を自動削除
-- ✅ **SOLID原則**: 保守性と拡張性を考慮した設計
-- ✅ **構造化ログ**: 詳細なログ出力とデバッグ機能
-- ✅ **クロスプラットフォーム**: Linux、macOS、Windows対応
-- ✅ **並列処理**: ポートスキャンを並列で実施
+- ✅ **Non-destructive**: Does not modify the original `docker-compose.yml` file
+- ✅ **Auto-detection**: Automatically detects conflicts with system ports in use
+- ✅ **Auto-resolution**: Automatically assigns available ports
+- ✅ **Network conflict avoidance**: Automatically detects and avoids Docker network subnet conflicts
+- ✅ **Auto-cleanup**: Automatically deletes `override.yml` on process termination
+- ✅ **SOLID principles**: Designed for maintainability and extensibility
+- ✅ **Structured logging**: Detailed log output and debugging capabilities
+- ✅ **Cross-platform**: Supports Linux, macOS, and Windows
+- ✅ **Parallel processing**: Performs port scanning in parallel
 
-## インストール
+## Installation
 
-### バイナリリリース
+### Binary Releases
 
-[GitHub Releases](https://github.com/harakeishi/gopose/releases) から適切なバイナリをダウンロード:
+Download the appropriate binary from [GitHub Releases](https://github.com/harakeishi/gopose/releases):
 
 ```bash
 # Linux (amd64)
@@ -52,7 +52,7 @@ unzip gopose.zip
 go install github.com/harakeishi/gopose@latest
 ```
 
-### ソースからビルド
+### Build from Source
 
 ```bash
 git clone https://github.com/harakeishi/gopose.git
@@ -61,66 +61,66 @@ make build
 sudo make install
 ```
 
-## 使用方法
+## Usage
 
-### 基本的な使用方法
+### Basic Usage
 
 ```bash
-# ポート衝突・ネットワーク衝突を検出・解決してDocker Composeを準備
+# Detect and resolve port/network conflicts and prepare Docker Compose
 gopose up
 
 ```
 
-### 高度な使用方法
+### Advanced Usage
 
-#### ファイル指定とポート範囲設定
+#### File Specification and Port Range Settings
 
 ```bash
-# 特定のファイルを指定
+# Specify a custom file
 gopose up -f custom-compose.yml
 
-# ポート範囲を指定
+# Specify port range
 gopose up --port-range 9000-9999
 
-# 複数のポート範囲を指定
+# Specify multiple port ranges
 gopose up --port-range 8000-8999,9000-9999
 ```
 
-#### 除外設定
+#### Exclusion Settings
 
 ```bash
-# 特定のサービスを除外
+# Exclude specific services
 gopose up --exclude-services redis,postgres
 
-# 特権ポートを除外
+# Exclude privileged ports
 gopose up --exclude-privileged
 
-# 予約ポートを除外
+# Exclude reserved ports
 gopose up --exclude-ports 8080,8443,9000
 ```
 
-#### 出力とログ設定
+#### Output and Logging Settings
 
 ```bash
-# ドライラン（実際の変更は行わない）
+# Dry run (no actual changes)
 gopose up --dry-run
 
-# 詳細ログ出力
+# Verbose logging
 gopose up --verbose
 
-# 詳細情報を含めて表示
-gopose up --detail # タイムスタンプやフィールドを含めて表示
+# Display with detailed information
+gopose up --detail # Shows timestamps and fields
 
-# JSON形式で状態確認
+# Check status in JSON format
 gopose status --output json
 
-# ログレベルを設定
+# Set log level
 gopose up --log-level debug
 ```
 
-### 設定ファイル
+### Configuration File
 
-設定ファイル（`.gopose.yaml`）をホームディレクトリまたはプロジェクトディレクトリに配置できます：
+You can place a configuration file (`.gopose.yaml`) in your home or project directory:
 
 ```yaml
 port:
@@ -150,243 +150,243 @@ resolver:
   port_proximity: true
 ```
 
-### 出力例
+### Output Example
 
 ```
 $ gopose up
-ポート衝突解決を開始
-Docker Composeファイル検出開始
-Docker Composeファイル発見
-Docker Composeファイル検出完了
-Docker Composeファイルを自動検出
-Docker Composeファイル解析開始
-Docker Composeバージョンが指定されていません
-Docker Composeファイル解析完了
-ポート衝突検出開始
-netstatを使用してポートスキャンを開始
-ポートスキャン完了
-システムポート衝突検出
-ポート衝突検出完了
-ポート衝突検出完了
-ポート衝突解決開始
-netstatを使用してポートスキャンを開始
-ポートスキャン完了
-範囲内ポートフィルタリング完了
-ポート割り当て成功
-解決案最適化開始
-解決案最適化完了
-ポート衝突解決完了
-ポート解決
-Override生成開始
-ポートマッピング更新
-Override生成完了
-Override検証開始
-Overrideのバージョンが指定されていませんが、Docker Composeの最新バージョンでは非推奨のため許可します
-Override検証完了
-Overrideファイル書き込み開始
-Overrideファイル書き込み完了
-Override.ymlファイルが生成されました
-既存Dockerネットワークを検出しました
-Docker Composeネットワーク設定を検出
-ネットワークサブネット競合を検出
-ネットワークサブネット競合を解決
-既存のコンテナを停止してからDocker Composeを起動
+Starting port conflict resolution
+Starting Docker Compose file detection
+Docker Compose file found
+Docker Compose file detection completed
+Auto-detected Docker Compose file
+Starting Docker Compose file parsing
+Docker Compose version not specified
+Docker Compose file parsing completed
+Starting port conflict detection
+Starting port scan using netstat
+Port scan completed
+System port conflict detected
+Port conflict detection completed
+Port conflict detection completed
+Starting port conflict resolution
+Starting port scan using netstat
+Port scan completed
+In-range port filtering completed
+Port allocation successful
+Starting solution optimization
+Solution optimization completed
+Port conflict resolution completed
+Port resolved
+Starting override generation
+Port mapping updated
+Override generation completed
+Starting override validation
+Override version not specified, but allowed as it's deprecated in latest Docker Compose versions
+Override validation completed
+Starting override file write
+Override file write completed
+Override.yml file generated
+Existing Docker networks detected
+Docker Compose network configuration detected
+Network subnet conflict detected
+Network subnet conflict resolved
+Stopping existing containers before starting Docker Compose
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.0s
  ✔ Network gopose_default  Removed                                                                                         0.2s
-Docker Composeを起動
-Docker Composeを実行
+Starting Docker Compose
+Executing Docker Compose
 [+] Running 2/2
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
 Attaching to web-1
 ```
 
-#### detail指定時
+#### With --detail flag
 
 ```
 $ gopose up --detail
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg=ポート衝突解決を開始 component=gopose timestamp=2025-06-10T23:31:03.178+09:00 dry_run=false compose_file=docker-compose.yml output_file="" strategy=auto port_range=8000-9999 skip_compose_up=false
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Composeファイル検出完了" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 directory=/Users/keishi.hara/src/github.com/harakeishi/gopose found_count=1
-time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Composeファイルを自動検出" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml
-time=2025-06-10T23:31:03.180+09:00 level=WARN msg="Docker Composeバージョンが指定されていません" component=gopose timestamp=2025-06-10T23:31:03.180+09:00
-time=2025-06-10T23:31:03.180+09:00 level=INFO msg="Docker Composeファイル解析完了" component=gopose timestamp=2025-06-10T23:31:03.180+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml services_count=1
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポートスキャン完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 found_ports_count=18
-time=2025-06-10T23:31:03.191+09:00 level=WARN msg=システムポート衝突検出 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 port=3000 service=web
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポート衝突検出完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
-time=2025-06-10T23:31:03.191+09:00 level=INFO msg=ポート衝突検出完了 component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポートスキャン完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 found_ports_count=18
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=解決案最適化完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 original_count=1 optimized_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート衝突解決完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 resolved_conflicts=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=ポート解決 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 service=web from=3000 to=8001 reason="ポート 3000 から 8001 への自動変更"
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="既存Dockerネットワークを検出しました" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=3
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Docker Composeネットワーク設定を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=1
-time=2025-06-10T23:31:03.205+09:00 level=WARN msg="ネットワークサブネット競合を検出" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default conflicting_subnet="172.20.0.0/24"
-time=2025-06-10T23:31:03.205+09:00 level=INFO msg="ネットワークサブネット競合を解決" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override生成完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override検証完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Overrideファイル書き込み完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override.ymlファイルが生成されました component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=docker-compose.override.yml
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg="既存のコンテナを停止してからDocker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Starting port conflict resolution" component=gopose timestamp=2025-06-10T23:31:03.178+09:00 dry_run=false compose_file=docker-compose.yml output_file="" strategy=auto port_range=8000-9999 skip_compose_up=false
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Docker Compose file detection completed" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 directory=/Users/keishi.hara/src/github.com/harakeishi/gopose found_count=1
+time=2025-06-10T23:31:03.179+09:00 level=INFO msg="Auto-detected Docker Compose file" component=gopose timestamp=2025-06-10T23:31:03.179+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml
+time=2025-06-10T23:31:03.180+09:00 level=WARN msg="Docker Compose version not specified" component=gopose timestamp=2025-06-10T23:31:03.180+09:00
+time=2025-06-10T23:31:03.180+09:00 level=INFO msg="Docker Compose file parsing completed" component=gopose timestamp=2025-06-10T23:31:03.180+09:00 file=/Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml services_count=1
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port scan completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 found_ports_count=18
+time=2025-06-10T23:31:03.191+09:00 level=WARN msg="System port conflict detected" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 port=3000 service=web
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port conflict detection completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
+time=2025-06-10T23:31:03.191+09:00 level=INFO msg="Port conflict detection completed" component=gopose timestamp=2025-06-10T23:31:03.191+09:00 conflicts_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port scan completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 found_ports_count=18
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Solution optimization completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 original_count=1 optimized_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port conflict resolution completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 resolved_conflicts=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Port resolved" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 service=web from=3000 to=8001 reason="Automatic port change from 3000 to 8001"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Existing Docker networks detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=3
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Docker Compose network configuration detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network_count=1
+time=2025-06-10T23:31:03.205+09:00 level=WARN msg="Network subnet conflict detected" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default conflicting_subnet="172.20.0.0/24"
+time=2025-06-10T23:31:03.205+09:00 level=INFO msg="Network subnet conflict resolved" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override generation completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override validation completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override file write completed" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Override.yml file generated" component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=docker-compose.override.yml
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg="Stopping existing containers before starting Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.2s
  ✔ Network gopose_default  Removed                                                                                         0.2s
-time=2025-06-10T23:31:03.779+09:00 level=INFO msg="Docker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.779+09:00
-time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f docker-compose.override.yml up --force-recreate --remove-orphans"
+time=2025-06-10T23:31:03.779+09:00 level=INFO msg="Starting Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.779+09:00
+time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Executing Docker Compose" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f docker-compose.override.yml up --force-recreate --remove-orphans"
 [+] Running 2/2
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
 Attaching to web-1
 ```
 
-## ネットワーク衝突回避機能
+## Network Conflict Avoidance
 
-goposeは既存のDockerネットワークとのサブネット衝突を自動検出し、安全な代替サブネットを割り当てます。
+gopose automatically detects subnet conflicts with existing Docker networks and assigns safe alternative subnets.
 
-### 機能概要
+### Feature Overview
 
-- **自動検出**: 既存のDockerネットワークサブネットを自動検出
-- **衝突回避**: Docker Composeで定義されたネットワークのサブネットが既存ネットワークと衝突する場合、安全な代替サブネットを自動生成
-- **優先順位**: `10.x.x.x/24` > `192.168.x.x/24` > `172.x.x.x/24` の順で安全なサブネットを選択
-- **競合回避**: Dockerのデフォルト範囲（`172.17-29.x.x`）や一般的なホームルーター範囲を回避
+- **Auto-detection**: Automatically detects existing Docker network subnets
+- **Conflict avoidance**: Automatically generates safe alternative subnets when Docker Compose-defined network subnets conflict with existing networks
+- **Priority order**: Selects safe subnets in order: `10.x.x.x/24` > `192.168.x.x/24` > `172.x.x.x/24`
+- **Conflict avoidance**: Avoids Docker default ranges (`172.17-29.x.x`) and common home router ranges
 
-### サブネット割り当て戦略
+### Subnet Assignment Strategy
 
-1. **10.x.x.x/24 範囲**: 最も安全（`10.20.0.0/24` から開始）
-2. **192.168.x.x/24 範囲**: 一般的なホームルーター範囲を回避（`192.168.100.0/24` から開始）
-3. **172.x.x.x/24 範囲**: 最後の手段（`172.30.0.0/24` から開始、Dockerデフォルト範囲を回避）
+1. **10.x.x.x/24 range**: Safest (starting from `10.20.0.0/24`)
+2. **192.168.x.x/24 range**: Avoids common home router ranges (starting from `192.168.100.0/24`)
+3. **172.x.x.x/24 range**: Last resort (starting from `172.30.0.0/24`, avoiding Docker default ranges)
 
-### 動作例
+### Example
 
 ```yaml
-# 元のdocker-compose.yml
+# Original docker-compose.yml
 networks:
   app-network:
     ipam:
       config:
-        - subnet: 172.20.0.0/24  # 他のDockerネットワークと衝突
+        - subnet: 172.20.0.0/24  # Conflicts with other Docker networks
 
-# 生成されるdocker-compose.override.yml
+# Generated docker-compose.override.yml
 networks:
   app-network:
     ipam:
       config:
-        - subnet: 10.20.0.0/24  # 安全なサブネットに自動変更
+        - subnet: 10.20.0.0/24  # Automatically changed to safe subnet
 ```
 
-## ディレクトリ構造
+## Directory Structure
 
 ```
 gopose/
-├── cmd/                 # CLIコマンド
+├── cmd/                 # CLI commands
 │   ├── root.go         # Cobra root command + DI container
 │   ├── up.go           # up subcommand
 │   ├── clean.go        # clean subcommand
 │   ├── status.go       # status subcommand
-│   └── wire.go         # 依存性注入設定 (Wire)
-├── internal/           # 内部実装
-│   ├── app/           # アプリケーション層
-│   ├── scanner/       # ポートスキャン
-│   ├── parser/        # Docker Compose解析
-│   ├── resolver/      # 衝突解決
-│   ├── generator/     # Override生成
-│   ├── file/          # ファイル操作
-│   ├── watcher/       # プロセス監視
-│   ├── cleanup/       # 自動クリーンアップ
-│   ├── config/        # 設定管理
-│   ├── logger/        # ログ機能
-│   └── errors/        # エラーハンドリング
-├── pkg/               # 公開パッケージ
-│   ├── types/         # 型定義
-│   └── testutil/      # テストユーティリティ
-├── test/              # テスト
-│   ├── unit/          # 単体テスト
-│   ├── integration/   # 統合テスト
-│   └── e2e/           # E2Eテスト
-├── docs/              # ドキュメント
-├── scripts/           # スクリプト
-└── deployments/       # デプロイメント設定
+│   └── wire.go         # Dependency injection configuration (Wire)
+├── internal/           # Internal implementation
+│   ├── app/           # Application layer
+│   ├── scanner/       # Port scanning
+│   ├── parser/        # Docker Compose parsing
+│   ├── resolver/      # Conflict resolution
+│   ├── generator/     # Override generation
+│   ├── file/          # File operations
+│   ├── watcher/       # Process monitoring
+│   ├── cleanup/       # Auto-cleanup
+│   ├── config/        # Configuration management
+│   ├── logger/        # Logging functionality
+│   └── errors/        # Error handling
+├── pkg/               # Public packages
+│   ├── types/         # Type definitions
+│   └── testutil/      # Test utilities
+├── test/              # Tests
+│   ├── unit/          # Unit tests
+│   ├── integration/   # Integration tests
+│   └── e2e/           # E2E tests
+├── docs/              # Documentation
+├── scripts/           # Scripts
+└── deployments/       # Deployment configurations
 ```
 
-## 開発
+## Development
 
-### 開発環境セットアップ
+### Development Environment Setup
 
 ```bash
-# リポジトリをクローン
+# Clone repository
 git clone https://github.com/harakeishi/gopose.git
 cd gopose
 
-# 依存関係のインストール
+# Install dependencies
 make deps
 
-# 開発用ビルド
+# Development build
 make dev
 
-# テスト実行
+# Run tests
 make test
 
-# コード品質チェック
+# Code quality check
 make check
 ```
 
-### Make タスク
+### Make Tasks
 
 ```bash
-# ビルド
-make build              # 通常ビルド
-make build-all          # 全プラットフォーム向けビルド
-make dev                # 開発用ビルド
+# Build
+make build              # Regular build
+make build-all          # Build for all platforms
+make dev                # Development build
 
-# テスト
-make test               # 全テスト実行
-make test-unit          # 単体テスト
-make test-integration   # 統合テスト
-make test-e2e           # E2Eテスト
-make test-coverage      # カバレッジ生成
+# Testing
+make test               # Run all tests
+make test-unit          # Unit tests
+make test-integration   # Integration tests
+make test-e2e           # E2E tests
+make test-coverage      # Generate coverage
 
-# コード品質
-make fmt                # コードフォーマット
-make lint               # リンター実行
-make vet                # go vet実行
-make check              # 全チェック実行
+# Code Quality
+make fmt                # Code formatting
+make lint               # Run linter
+make vet                # Run go vet
+make check              # Run all checks
 
-# 開発
-make run                # 実行
-make clean              # クリーンアップ
-make deps               # 依存関係インストール
+# Development
+make run                # Execute
+make clean              # Clean up
+make deps               # Install dependencies
 
-# リリース
-make release            # リリースビルド
-make docker-build       # Dockerイメージビルド
+# Release
+make release            # Release build
+make docker-build       # Docker image build
 ```
 
-### テスト
+### Testing
 
 ```bash
-# 全テスト実行
+# Run all tests
 go test ./...
 
-# カバレッジ付きテスト
+# Test with coverage
 go test -race -coverprofile=coverage.out ./...
 
-# ベンチマークテスト
+# Benchmark tests
 go test -bench=. ./...
 
-# 特定のテストのみ実行
+# Run specific tests only
 go test -run TestPortScanner ./internal/scanner/
 ```
 
-## ライセンス
+## License
 
-このプロジェクトは [MIT License](LICENSE) の下で公開されています。
+This project is published under the [MIT License](LICENSE).
 ---
 
 <div align="center">
   <p>Developed by <a href="https://github.com/harakeishi">harakeishi</a></p>
   <p>
-    <a href="https://github.com/harakeishi/gopose/issues">🐛 バグ報告</a> •
-    <a href="https://github.com/harakeishi/gopose/discussions">💬 ディスカッション</a> •
+    <a href="https://github.com/harakeishi/gopose/issues">🐛 Bug Reports</a> •
+    <a href="https://github.com/harakeishi/gopose/discussions">💬 Discussions</a> •
     <a href="https://github.com/harakeishi/gopose/wiki">📖 Wiki</a>
   </p>
 </div>
