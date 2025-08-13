@@ -386,6 +386,19 @@ This project is published under the [MIT License](LICENSE).
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/t-daisuke"><img src="https://avatars.githubusercontent.com/u/50610194?v=4?s=100" width="100px;" alt="doskoi"/><br /><sub><b>doskoi</b></sub></a><br /><a href="https://github.com/harakeishi/gopose/commits?author=t-daisuke" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 ---
 
