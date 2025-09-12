@@ -1,0 +1,45 @@
+desc: "gopose E2E Test Suite"
+
+vars:
+  override_file: "docker-compose.override.yml"
+
+steps:
+  - desc: "Dry-run mode works correctly"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../gopose up --dry-run -f no-conflict.yml
+        # Verify no file created in dry-run
+        ! test -f {{ vars.override_file }}
+    test: |
+      current.exit_code == 0
+
+  - desc: "No conflict case: gopose up with available ports"
+    exec:
+      command: |
+        cd fixtures
+        rm -f {{ vars.override_file }}
+        ../../../gopose up -f no-conflict.yml
+        # Cleanup any generated files
+        rm -f {{ vars.override_file }}
+    test: |
+      current.exit_code == 0
+      
+  - desc: "Port conflict resolution works"
+    exec:
+      command: |
+        # Build and run Go port occupier
+        go build -o occupy_port occupy_port.go
+        ./occupy_port 8080 > /dev/null 2>&1 & echo $! > /tmp/gopose_test.pid
+        sleep 2
+        
+        # Test conflict resolution
+        cd fixtures
+        ../../../gopose up -f port-conflict.yml --verbose
+        
+        # Cleanup
+        kill $(cat /tmp/gopose_test.pid) 2>/dev/null || true
+        rm -f /tmp/gopose_test.pid {{ vars.override_file }} occupy_port
+    test: |
+      current.exit_code == 0

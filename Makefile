@@ -55,8 +55,8 @@ test-integration:
 
 .PHONY: test-e2e
 test-e2e:
-	@echo "Running e2e tests..."
-	go test $(GO_TEST_FLAGS) ./test/e2e/...
+	@echo "Running E2E tests..."
+	cd testdata/gopose && runn run gopose_e2e_test.yml --scopes run:exec
 
 .PHONY: test-coverage
 test-coverage: test

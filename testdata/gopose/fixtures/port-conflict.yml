@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web1:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    networks:
+      - web-network
+
+  web2:
+    image: nginx:alpine
+    ports:
+      - "8080:80"  # Intentional port conflict
+    networks:
+      - web-network
+
+  api:
+    image: node:alpine
+    ports:
+      - "3000:3000"
+    networks:
+      - api-network
+
+networks:
+  web-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  api-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16  # Intentional network conflict

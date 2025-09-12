@@ -29,6 +29,18 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Install runn for E2E tests
+      if: matrix.os == 'ubuntu-latest'
+      run: go install github.com/k1LoW/runn/cmd/runn@latest
+
+    - name: Build gopose binary for E2E tests
+      if: matrix.os == 'ubuntu-latest'
+      run: go build -o gopose .
+
+    - name: Run E2E tests
+      if: matrix.os == 'ubuntu-latest'
+      run: make test-e2e
+
     - name: Test build with goreleaser (snapshot)
       if: matrix.os == 'ubuntu-latest'
       uses: goreleaser/goreleaser-action@v6
