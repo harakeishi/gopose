@@ -114,32 +114,6 @@ func (p *YamlComposeParser) ParseServicePorts(ctx context.Context, service map[s
 	return portMappings, nil
 }
 
-// ValidateComposeVersion はDocker Composeのバージョンを検証します。
-func (p *YamlComposeParser) ValidateComposeVersion(ctx context.Context, version string) error {
-	if version == "" {
-		p.logger.Warn(ctx, "Docker Composeバージョンが指定されていません")
-		return nil
-	}
-
-	// サポートされているバージョンのリスト
-	supportedVersions := []string{"3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"}
-
-	for _, supported := range supportedVersions {
-		if version == supported || strings.HasPrefix(version, supported+".") {
-			p.logger.Debug(ctx, "サポートされているDocker Composeバージョン",
-				types.Field{Key: "version", Value: version})
-			return nil
-		}
-	}
-
-	// 警告として処理（エラーにはしない）
-	p.logger.Warn(ctx, "未サポートのDocker Composeバージョンです",
-		types.Field{Key: "version", Value: version},
-		types.Field{Key: "supported_versions", Value: supportedVersions})
-
-	return nil
-}
-
 // convertToComposeConfig は生のYAMLデータをComposeConfigに変換します。
 func (p *YamlComposeParser) convertToComposeConfig(ctx context.Context, raw map[string]interface{}, filepath string) (*types.ComposeConfig, error) {
 	config := &types.ComposeConfig{
@@ -148,11 +122,6 @@ func (p *YamlComposeParser) convertToComposeConfig(ctx context.Context, raw map[
 		Networks: make(map[string]types.Network),
 		Volumes:  make(map[string]types.Volume),
 		FilePath: filepath,
-	}
-
-	// バージョン検証
-	if err := p.ValidateComposeVersion(ctx, config.Version); err != nil {
-		return nil, err
 	}
 
 	// サービス解析
@@ -545,7 +514,7 @@ func (p *YamlComposeParser) parseNetworks(networks interface{}) map[string]types
 		// 詳細なネットワーク設定
 		for networkName, config := range n {
 			serviceNetwork := types.ServiceNetwork{}
-			
+
 			if configMap, ok := config.(map[string]interface{}); ok {
 				// IPv4アドレス設定
 				if ipv4, exists := configMap["ipv4_address"]; exists {
@@ -554,7 +523,7 @@ func (p *YamlComposeParser) parseNetworks(networks interface{}) map[string]types
 					}
 				}
 			}
-			
+
 			result[networkName] = serviceNetwork
 		}
 	}
