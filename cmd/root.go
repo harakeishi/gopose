@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	cfgFile string
-	verbose bool
-	detail  bool
+	cfgFile    string
+	verbose    bool
+	detail     bool
+	appVersion string
 )
 
 // rootCmd はルートコマンドを表します。
@@ -42,10 +43,18 @@ var rootCmd = &cobra.Command{
 
   # ポート範囲を指定
   gopose up --port-range 9000-9999`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if version, _ := cmd.Flags().GetBool("version"); version {
+			fmt.Printf("gopose version %s\n", appVersion)
+			return nil
+		}
+		return cmd.Help()
+	},
 }
 
 // Execute はコマンドを実行します。
-func Execute(ctx context.Context) error {
+func Execute(ctx context.Context, version string) error {
+	appVersion = version
 	return rootCmd.ExecuteContext(ctx)
 }
 
@@ -56,11 +65,13 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "設定ファイルのパス (デフォルト: $HOME/.gopose.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "詳細ログ出力")
 	rootCmd.PersistentFlags().BoolVar(&detail, "detail", false, "ログの詳細情報を表示")
+	rootCmd.Flags().BoolP("version", "", false, "バージョン情報を表示")
 
 	// 各サブコマンドをルートコマンドに追加
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // initConfig は設定を初期化します。
