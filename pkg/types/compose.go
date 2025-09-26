@@ -4,12 +4,12 @@ import "time"
 
 // Service はDocker Composeサービスを表します。
 type Service struct {
-	Name        string                     `yaml:"name" json:"name"`
-	Image       string                     `yaml:"image" json:"image"`
-	Ports       []PortMapping              `yaml:"ports" json:"ports"`
-	DependsOn   []string                   `yaml:"depends_on" json:"depends_on"`
-	Environment map[string]string          `yaml:"environment" json:"environment"`
-	Networks    map[string]ServiceNetwork  `yaml:"networks" json:"networks"`
+	Name        string                    `yaml:"name" json:"name"`
+	Image       string                    `yaml:"image" json:"image"`
+	Ports       []PortMapping             `yaml:"ports" json:"ports"`
+	DependsOn   []string                  `yaml:"depends_on" json:"depends_on"`
+	Environment map[string]string         `yaml:"environment" json:"environment"`
+	Networks    map[string]ServiceNetwork `yaml:"networks" json:"networks"`
 }
 
 // ComposeConfig はDocker Composeファイルの設定を表します。
@@ -58,8 +58,8 @@ type OverrideConfig struct {
 
 // ServiceOverride はサービスのオーバーライド設定を表します。
 type ServiceOverride struct {
-	Ports    []PortMapping              `yaml:"ports" json:"ports"`
-	Networks map[string]ServiceNetwork  `yaml:"networks" json:"networks"`
+	Ports    []PortMapping             `yaml:"ports" json:"ports"`
+	Networks map[string]ServiceNetwork `yaml:"networks" json:"networks"`
 }
 
 // ServiceNetwork はサービスのネットワーク設定を表します。
