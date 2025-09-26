@@ -293,16 +293,60 @@ func (p *YamlComposeParser) parsePortMapping(ctx context.Context, portInterface 
 	}
 }
 
+// expandVariables は文字列内の環境変数を展開します。
+// ${VAR:-default} や $VAR の形式をサポートします。
+func expandVariables(input string) string {
+	// ${VAR:-default} 形式の変数を展開
+	varWithDefaultRe := regexp.MustCompile(`\$\{([^}]+):-([^}]*)\}`)
+	expanded := varWithDefaultRe.ReplaceAllStringFunc(input, func(match string) string {
+		submatches := varWithDefaultRe.FindStringSubmatch(match)
+		if len(submatches) == 3 {
+			varName := submatches[1]
+			defaultValue := submatches[2]
+			if value := os.Getenv(varName); value != "" {
+				return value
+			}
+			return defaultValue
+		}
+		return match
+	})
+
+	// ${VAR} 形式の変数を展開
+	varRe := regexp.MustCompile(`\$\{([^}]+)\}`)
+	expanded = varRe.ReplaceAllStringFunc(expanded, func(match string) string {
+		submatches := varRe.FindStringSubmatch(match)
+		if len(submatches) == 2 {
+			return os.Getenv(submatches[1])
+		}
+		return match
+	})
+
+	// $VAR 形式の変数を展開
+	simpleVarRe := regexp.MustCompile(`\$([A-Za-z_][A-Za-z0-9_]*)`)
+	expanded = simpleVarRe.ReplaceAllStringFunc(expanded, func(match string) string {
+		submatches := simpleVarRe.FindStringSubmatch(match)
+		if len(submatches) == 2 {
+			return os.Getenv(submatches[1])
+		}
+		return match
+	})
+
+	return expanded
+}
+
 // parsePortString は文字列形式のポートマッピングを解析します。
 func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string) (*types.PortMapping, error) {
-	// 例: "8080:80", "8080:80/tcp", "127.0.0.1:8080:80"
+	// 例: "8080:80", "8080:80/tcp", "127.0.0.1:8080:80", "${PORT:-3000}:80"
+
+	// 環境変数を展開
+	expandedPortStr := expandVariables(portStr)
 
 	protocol := "tcp"
-	portPart := portStr
+	portPart := expandedPortStr
 
 	// プロトコル部分を分離
-	if strings.Contains(portStr, "/") {
-		parts := strings.Split(portStr, "/")
+	if strings.Contains(expandedPortStr, "/") {
+		parts := strings.Split(expandedPortStr, "/")
 		if len(parts) == 2 {
 			portPart = parts[0]
 			protocol = parts[1]
@@ -316,7 +360,7 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 	if len(matches) == 0 {
 		return nil, &errors.AppError{
 			Code:    errors.ErrParseFailed,
-			Message: fmt.Sprintf("無効なポート形式: %s", portStr),
+			Message: fmt.Sprintf("無効なポート形式: %s (展開後: %s)", portStr, expandedPortStr),
 		}
 	}
 
