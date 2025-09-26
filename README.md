@@ -69,6 +69,10 @@ sudo make install
 # Detect and resolve port/network conflicts and prepare Docker Compose
 gopose up
 
+# Check version
+gopose --version
+# or
+gopose version
 ```
 
 ### Advanced Usage
@@ -283,6 +287,7 @@ gopose/
 │   ├── up.go           # up subcommand
 │   ├── clean.go        # clean subcommand
 │   ├── status.go       # status subcommand
+│   ├── version.go      # version subcommand
 │   └── wire.go         # Dependency injection configuration (Wire)
 ├── internal/           # Internal implementation
 │   ├── app/           # Application layer

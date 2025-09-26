@@ -69,6 +69,10 @@ sudo make install
 # ポート衝突・ネットワーク衝突を検出・解決してDocker Composeを準備
 gopose up
 
+# バージョン確認
+gopose --version
+# または
+gopose version
 ```
 
 ### 高度な使用方法
@@ -283,6 +287,7 @@ gopose/
 │   ├── up.go           # up subcommand
 │   ├── clean.go        # clean subcommand
 │   ├── status.go       # status subcommand
+│   ├── version.go      # version subcommand
 │   └── wire.go         # 依存性注入設定 (Wire)
 ├── internal/           # 内部実装
 │   ├── app/           # アプリケーション層
