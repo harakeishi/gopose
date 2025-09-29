@@ -2,9 +2,9 @@ package logger
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,10 +28,21 @@ func TestParseLogLevel(t *testing.T) {
 
 func TestStructuredLoggerWithFields(t *testing.T) {
 	factory := NewStructuredLoggerFactory(true)
-	tmp := t.TempDir()
-	file := filepath.Join(tmp, "log.txt")
 
-	cfg := types.LogConfig{Level: "debug", Format: "json", File: file}
+	// Redirect stdout so the structured logger writes to a controllable buffer
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+	t.Cleanup(func() {
+		w.Close()
+		r.Close()
+		os.Stdout = origStdout
+	})
+
+	cfg := types.LogConfig{Level: "debug", Format: "json"}
 	log, err := factory.CreateWithName("test", cfg)
 	if err != nil {
 		t.Fatalf("CreateWithName error: %v", err)
@@ -43,9 +54,11 @@ func TestStructuredLoggerWithFields(t *testing.T) {
 	}
 	base.Error(context.Background(), "message", os.ErrNotExist)
 
-	data, err := os.ReadFile(file)
+	w.Close()
+
+	data, err := io.ReadAll(r)
 	if err != nil {
-		t.Fatalf("reading log file: %v", err)
+		t.Fatalf("reading redirected stdout: %v", err)
 	}
 	content := string(data)
 	if !strings.Contains(content, "message") || !strings.Contains(content, "request_id") {
