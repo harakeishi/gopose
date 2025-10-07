@@ -1,7 +1,7 @@
 desc: "gopose E2E Test Suite"
 
 vars:
-  override_file: "docker-compose.override.yml"
+  override_file: "compose.override.yml"
 
 steps:
   - desc: "Dry-run mode works correctly"

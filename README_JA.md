@@ -12,11 +12,11 @@
 
 **gopose** (Go Port Override Solution Engine) は、Docker Compose のポートバインディング衝突とネットワーク衝突を自動検出・解決するツールです。
 
-元の `docker-compose.yml` を変更せずに `docker-compose.override.yml` を生成し、ポート衝突・ネットワーク衝突解決後、自動的に `override.yml` を削除します。
+元の `compose.yml` を変更せずに `compose.override.yml` を生成し、ポート衝突・ネットワーク衝突解決後、自動的に `override.yml` を削除します。
 
 ### 🎯 主な特徴
 
-- ✅ **非破壊的**: 元の `docker-compose.yml` ファイルを変更しません
+- ✅ **非破壊的**: 元の `compose.yml` ファイルを変更しません
 - ✅ **自動検出**: システムの使用中ポートとの衝突を自動検出
 - ✅ **自動解決**: 利用可能なポートを自動割り当て
 - ✅ **ネットワーク衝突回避**: Dockerネットワークのサブネット衝突を自動検出・回避
@@ -131,8 +131,8 @@ port:
   exclude_privileged: true
 
 file:
-  compose_file: "docker-compose.yml"
-  override_file: "docker-compose.override.yml"
+  compose_file: "compose.yml"
+  override_file: "compose.override.yml"
   backup_enabled: true
 
 watcher:
@@ -225,14 +225,14 @@ time=2025-06-10T23:31:03.205+09:00 level=WARN msg="ネットワークサブネ�
 time=2025-06-10T23:31:03.205+09:00 level=INFO msg="ネットワークサブネット競合を解決" component=gopose timestamp=2025-06-10T23:31:03.205+09:00 network=default original_subnet="172.20.0.0/24" new_subnet="10.20.0.0/24"
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override生成完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 services_count=1
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override検証完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Overrideファイル書き込み完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=docker-compose.override.yml file_size=607
-time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override.ymlファイルが生成されました component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=docker-compose.override.yml
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Overrideファイル書き込み完了 component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_path=compose.override.yml file_size=607
+time=2025-06-10T23:31:03.202+09:00 level=INFO msg=Override.ymlファイルが生成されました component=gopose timestamp=2025-06-10T23:31:03.202+09:00 output_file=compose.override.yml
 time=2025-06-10T23:31:03.202+09:00 level=INFO msg="既存のコンテナを停止してからDocker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.202+09:00
 [+] Running 2/2
  ✔ Container gopose-web-1  Removed                                                                                         0.2s
  ✔ Network gopose_default  Removed                                                                                         0.2s
 time=2025-06-10T23:31:03.779+09:00 level=INFO msg="Docker Composeを起動" component=gopose timestamp=2025-06-10T23:31:03.779+09:00
-time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f docker-compose.override.yml up --force-recreate --remove-orphans"
+time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" component=gopose timestamp=2025-06-10T23:31:03.780+09:00 command="docker compose -f /Users/keishi.hara/src/github.com/harakeishi/gopose/compose.yml -f compose.override.yml up --force-recreate --remove-orphans"
 [+] Running 2/2
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
@@ -266,7 +266,7 @@ networks:
       config:
         - subnet: 172.20.0.0/24  # 他のDockerネットワークと衝突
 
-# 生成されるdocker-compose.override.yml
+# 生成されるcompose.override.yml
 networks:
   app-network:
     ipam:

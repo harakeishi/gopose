@@ -321,11 +321,11 @@ func (g *OverrideGeneratorImpl) generateFileHeader() string {
 # Generated at: %s
 # 
 # This file contains port mappings to resolve conflicts detected in your
-# original docker-compose.yml file. The original file remains unchanged.
-# 
+# original compose.yml file. The original file remains unchanged.
+#
 # To use this override:
-# 1. Keep this file in the same directory as your docker-compose.yml
-# 2. Run: docker-compose up
+# 1. Keep this file in the same directory as your compose.yml
+# 2. Run: docker compose up
 # 
 # Docker Compose will automatically merge both files.
 # 

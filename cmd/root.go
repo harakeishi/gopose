@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 	Short: "Docker Compose ポート衝突自動解決ツール",
 	Long: `gopose は Docker Compose のポートバインディング衝突を自動検出・解決するツールです。
 
-元の docker-compose.yml を変更せずに docker-compose.override.yml を生成し、
+元の compose.yml を変更せずに compose.override.yml を生成し、
 ポート衝突解決後、自動的に override.yml を削除します。`,
 	Example: `  # ポート衝突を検出・解決してDocker Composeを準備
   gopose up

@@ -549,10 +549,10 @@ func (d *ComposeFileDetectorImpl) DetectComposeFiles(ctx context.Context, direct
 
 	// 標準的なファイル名のリスト
 	candidates := []string{
-		"docker-compose.yml",
-		"docker-compose.yaml",
 		"compose.yml",
 		"compose.yaml",
+		"docker-compose.yml",
+		"docker-compose.yaml",
 	}
 
 	var foundFiles []string

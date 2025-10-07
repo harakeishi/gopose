@@ -7,8 +7,8 @@
 
 ### 目的
 - Docker Composeのポートバインディング衝突を自動検出・解決
-- 元の`docker-compose.yml`を変更せずに`override.yml`を生成
-- ポート衝突解決後、自動的に`override.yml`を削除
+- 元の`compose.yml`を変更せずに`compose.override.yml`を生成
+- ポート衝突解決後、自動的に`compose.override.yml`を削除
 
 ### 技術スタック
 - **言語**: Go (1.21+)
@@ -40,7 +40,7 @@ graph TD
     
     F --> K["Available Port Pool"]
     G --> L["Service Port Map"]
-    H --> M["docker-compose.override.yml"]
+    H --> M["compose.override.yml"]
     I --> N["Process Monitor"]
     J --> O["Auto Cleanup"]
 ```
@@ -60,13 +60,13 @@ graph TD
    - プラットフォーム固有の実装を抽象化
 
 3. **Docker Compose Parser** (`internal/parser/`)
-   - `docker-compose.yml`の解析
+   - `compose.yml`の解析
    - サービス・ポート情報の抽出
    - 複数フォーマット対応（YAML/JSON）
 
 4. **Override Generator** (`internal/generator/`)
    - ポート衝突解決ロジック
-   - `docker-compose.override.yml`構造生成
+   - `compose.override.yml`構造生成
 
 5. **File Manager** (`internal/file/`)
    - ファイル操作の抽象化
@@ -163,7 +163,7 @@ graph TD
 
 #### 3.2.1 ポート衝突検出
 - システムの使用中ポート一覧取得
-- `docker-compose.yml`のポート設定解析
+- `compose.yml`のポート設定解析
 - 衝突ポートの特定
 
 #### 3.2.2 自動ポート割り当て
@@ -172,7 +172,7 @@ graph TD
 - ポート番号の一貫性保持
 
 #### 3.2.3 Override ファイル生成
-- 衝突解決用の`docker-compose.override.yml`作成
+- 衝突解決用の`compose.override.yml`作成
 - 元ファイルの構造保持
 - 最小限の変更のみ記述
 
@@ -391,8 +391,8 @@ sequenceDiagram
 
 **デフォルト設定**
 - ポート範囲: 8000-9999
-- Docker Composeファイル: docker-compose.yml
-- Overrideファイル: docker-compose.override.yml
+- Docker Composeファイル: compose.yml
+- Overrideファイル: compose.override.yml
 
 **監視設定**
 - 監視間隔: 5秒
@@ -407,7 +407,7 @@ sequenceDiagram
 ### 7.1 エラー種別
 
 #### 7.1.1 ファイル関連エラー
-- `docker-compose.yml`が存在しない
+- `compose.yml`が存在しない
 - 権限不足でファイル作成できない
 
 #### 7.1.2 ポート関連エラー
