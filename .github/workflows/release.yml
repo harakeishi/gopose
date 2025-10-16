@@ -59,11 +59,11 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           chmod +x ./gopose 2>/dev/null || true
-          ./gopose --version 2>/dev/null || echo "Binary test completed"
+          ./gopose version 2>/dev/null || echo "Binary test completed"
         continue-on-error: true
 
       - name: Test binary (Windows)
         if: runner.os == 'Windows'
         run: |
-          .\gopose.exe --version
+          .\gopose.exe version
         continue-on-error: true

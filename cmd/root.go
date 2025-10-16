@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	cfgFile string
-	verbose bool
-	detail  bool
+	cfgFile    string
+	verbose    bool
+	detail     bool
+	appVersion string
 )
 
 // rootCmd はルートコマンドを表します。
@@ -45,7 +46,8 @@ var rootCmd = &cobra.Command{
 }
 
 // Execute はコマンドを実行します。
-func Execute(ctx context.Context) error {
+func Execute(ctx context.Context, version string) error {
+	appVersion = version
 	return rootCmd.ExecuteContext(ctx)
 }
 
@@ -61,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // initConfig は設定を初期化します。
