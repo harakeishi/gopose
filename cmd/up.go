@@ -168,8 +168,8 @@ var upCmd = &cobra.Command{
 			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)})
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
-		if filePath == "" || filePath == "docker-compose.yml" {
-			wd, err := os.Getwd()
+		if filePath == "" || filePath == "compose.yml" {
+      wd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
 			}
@@ -274,7 +274,7 @@ var upCmd = &cobra.Command{
 
 		// 出力ファイル名の決定
 		if outputFile == "" {
-			outputFile = "docker-compose.override.yml"
+			outputFile = "compose.override.yml"
 		}
 
 		// ドライランモードでない場合のみファイル書き込み
@@ -308,12 +308,12 @@ func init() {
 	// gopose固有のフラグを定義
 	upCmd.Flags().StringVar(&portRange, "port-range", "", "利用するポート範囲 (例: 8000-9999)")
 	upCmd.Flags().StringVar(&strategy, "strategy", "auto", "解決戦略 (auto, range, user)")
-	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: docker-compose.override.yml)")
+	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: compose.override.yml)")
 	upCmd.Flags().BoolVar(&dryRun, "dry-run", false, "ドライラン（override.yml生成のみ、Docker Composeは実行しない）")
 	upCmd.Flags().BoolVar(&skipComposeUp, "skip-compose-up", false, "[非推奨] このオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 
 	// Docker Composeオプションもサポート（透過的に渡される）
-	upCmd.Flags().StringVarP(&filePath, "file", "f", "docker-compose.yml", "Docker Composeファイルのパス")
+	upCmd.Flags().StringVarP(&filePath, "file", "f", "compose.yml", "Docker Composeファイルのパス")
 	upCmd.Flags().StringVarP(&composeProjectName, "project-name", "p", "", "Docker Composeプロジェクト名")
 	upCmd.Flags().BoolP("detach", "d", false, "Detached mode: バックグラウンドでサービスを実行")
 	upCmd.Flags().Bool("build", false, "サービス起動前にイメージをビルド")

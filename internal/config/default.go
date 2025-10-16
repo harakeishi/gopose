@@ -18,8 +18,8 @@ func DefaultConfig() *types.AppConfig {
 			ExcludePrivileged: true,
 		},
 		File: types.FileConfig{
-			ComposeFile:   "docker-compose.yml",
-			OverrideFile:  "docker-compose.override.yml",
+			ComposeFile:   "compose.yml",
+			OverrideFile:  "compose.override.yml",
 			BackupEnabled: true,
 			BackupDir:     ".gopose/backups",
 		},
@@ -55,8 +55,8 @@ func DefaultPortConfig() types.PortConfig {
 // DefaultFileConfig はデフォルトのファイル設定を返します。
 func DefaultFileConfig() types.FileConfig {
 	return types.FileConfig{
-		ComposeFile:   "docker-compose.yml",
-		OverrideFile:  "docker-compose.override.yml",
+		ComposeFile:   "compose.yml",
+		OverrideFile:  "compose.override.yml",
 		BackupEnabled: true,
 		BackupDir:     ".gopose/backups",
 	}
