@@ -70,8 +70,6 @@ sudo make install
 gopose up
 
 # Check version
-gopose --version
-# or
 gopose version
 ```
 

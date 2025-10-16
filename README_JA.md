@@ -70,8 +70,6 @@ sudo make install
 gopose up
 
 # バージョン確認
-gopose --version
-# または
 gopose version
 ```
 
