@@ -1,18 +1,18 @@
 package cmd
 
 import (
-    "fmt"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "strconv"
-    "strings"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
 
-    "github.com/harakeishi/gopose/internal/generator"
-    "github.com/harakeishi/gopose/internal/parser"
-    "github.com/harakeishi/gopose/internal/scanner"
-    "github.com/harakeishi/gopose/pkg/types"
-    "github.com/spf13/cobra"
+	"github.com/harakeishi/gopose/internal/generator"
+	"github.com/harakeishi/gopose/internal/parser"
+	"github.com/harakeishi/gopose/internal/scanner"
+	"github.com/harakeishi/gopose/pkg/types"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -109,9 +109,6 @@ func detectWorktreeProjectName() (string, error) {
 	return topLevelBase, nil
 }
 
-
-
-
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
 	Use:   "up [docker-compose-options...]",
@@ -155,7 +152,7 @@ var upCmd = &cobra.Command{
 
 		// -p オプションが指定されていない場合は、ワークツリー名をプロジェクト名として自動設定
 		if composeProjectName == "" && os.Getenv("COMPOSE_PROJECT_NAME") == "" {
-            if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
+			if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
 				composeProjectName = pn
 				logger.Info(ctx, "ワークツリー名をプロジェクト名として使用",
 					types.Field{Key: "project_name", Value: composeProjectName})
@@ -172,15 +169,15 @@ var upCmd = &cobra.Command{
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
 		if filePath == "" || filePath == "docker-compose.yml" {
-            wd, err := os.Getwd()
+			wd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
 			}
 
 			detector := parser.NewComposeFileDetectorImpl(logger)
-            detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
+			detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
 			if err != nil {
-                return fmt.Errorf("docker composeファイルの自動検出に失敗: %w", err)
+				return fmt.Errorf("docker composeファイルの自動検出に失敗: %w", err)
 			}
 			filePath = detectedFile
 			logger.Info(ctx, "Docker Composeファイルを自動検出", types.Field{Key: "file", Value: filePath})
@@ -188,9 +185,9 @@ var upCmd = &cobra.Command{
 
 		// Docker Composeファイルの解析
 		yamlParser := parser.NewYamlComposeParser(logger)
-        config, err := yamlParser.ParseComposeFile(ctx, filePath)
+		config, err := yamlParser.ParseComposeFile(ctx, filePath)
 		if err != nil {
-            return fmt.Errorf("docker composeファイルの解析に失敗: %w", err)
+			return fmt.Errorf("docker composeファイルの解析に失敗: %w", err)
 		}
 
 		// 統一的な衝突検知の実行
@@ -257,9 +254,9 @@ var upCmd = &cobra.Command{
 		}
 
 		// 統一的なOverride.ymlの生成
-        override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
+		override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
 		if err != nil {
-            return fmt.Errorf("overrideファイルの生成に失敗: %w", err)
+			return fmt.Errorf("overrideファイルの生成に失敗: %w", err)
 		}
 
 		// プロジェクト名をoverrideに設定（Docker Composeコマンドの統一のため）
@@ -271,8 +268,8 @@ var upCmd = &cobra.Command{
 
 		// Override.ymlの妥当性検証
 		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
-        if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
-            return fmt.Errorf("overrideファイルの検証に失敗: %w", err)
+		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
+			return fmt.Errorf("overrideファイルの検証に失敗: %w", err)
 		}
 
 		// 出力ファイル名の決定
@@ -283,8 +280,8 @@ var upCmd = &cobra.Command{
 		// ドライランモードでない場合のみファイル書き込み
 		if !dryRun {
 			// Override.ymlファイルの書き込み
-            if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
-                return fmt.Errorf("overrideファイルの書き込みに失敗: %w", err)
+			if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
+				return fmt.Errorf("overrideファイルの書き込みに失敗: %w", err)
 			}
 
 			logger.Info(ctx, "Override.ymlファイルが生成されました",
