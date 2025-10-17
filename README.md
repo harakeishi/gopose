@@ -88,18 +88,24 @@ gopose up --port-range 9000-9999
 gopose up --port-range 8000-8999,9000-9999
 ```
 
-#### Exclusion Settings
+#### Reserved Ports Configuration
 
 ```bash
-# Exclude specific services
-gopose up --exclude-services redis,postgres
-
-# Exclude privileged ports
-gopose up --exclude-privileged
-
-# Exclude reserved ports
-gopose up --exclude-ports 8080,8443,9000
+# Reserve specific ports (will never be assigned even if unused)
+# Use configuration file for persistent settings
 ```
+
+You can reserve specific ports in `.gopose.yaml` to prevent them from being assigned:
+
+```yaml
+port:
+  reserved: [8080, 8443, 9000, 9090]  # These ports will never be assigned
+```
+
+**Important**: Reserved ports are guaranteed to be skipped during port allocation, regardless of whether they are currently in use or not. This is useful for:
+- Preventing conflicts with services you plan to start later
+- Reserving ports for manual debugging or testing
+- Avoiding specific ports that may be used by other tools or services
 
 #### Output and Logging Settings
 
@@ -129,6 +135,8 @@ port:
   range:
     start: 8000
     end: 9999
+  # Reserved ports: These ports will NEVER be assigned, even if they are not in use
+  # Useful for preventing conflicts with services you plan to start later
   reserved: [8080, 8443, 9000, 9090]
   exclude_privileged: true
 
@@ -151,6 +159,16 @@ resolver:
   preserve_dependencies: true
   port_proximity: true
 ```
+
+#### Configuration Priority
+
+Configuration settings are applied in the following order (later values override earlier ones):
+
+1. Default configuration (built-in)
+2. Configuration file (`.gopose.yaml`)
+3. CLI options (e.g., `--port-range`)
+
+**Note**: Reserved ports from the configuration file are always preserved, even when using CLI options to override the port range.
 
 ### Output Example
 
@@ -239,6 +257,62 @@ time=2025-06-10T23:31:03.780+09:00 level=INFO msg="Docker Composeを実行" comp
  ✔ Network gopose_default  Created                                                                                         0.0s
  ✔ Container gopose-web-1  Created                                                                                         0.0s
 Attaching to web-1
+```
+
+## Reserved Ports
+
+The `reserved` configuration allows you to specify ports that should never be assigned by gopose, regardless of whether they are currently in use.
+
+### Use Cases
+
+- **Future services**: Reserve ports for services you plan to start later
+- **Manual debugging**: Keep specific ports available for manual testing
+- **External tools**: Avoid conflicts with ports used by other development tools
+- **Consistency**: Ensure certain ports remain free across different environments
+
+### Example Configuration
+
+```yaml
+# .gopose.yaml
+port:
+  range:
+    start: 8000
+    end: 8100
+  reserved:
+    - 8080  # Reserved for main application
+    - 8443  # Reserved for HTTPS proxy
+    - 9000  # Reserved for debugging
+    - 9090  # Reserved for monitoring tools
+  exclude_privileged: true
+```
+
+### Behavior
+
+With the above configuration:
+- If gopose needs to assign ports for Docker Compose services with conflicts on ports 80 and 443
+- It will skip ports 8080, 8443, 9000, and 9090 (even if they are not in use)
+- Available ports like 8000-8079, 8081-8442, 8444-8999, 9001-9089, 9091-8100 will be considered
+- For example, ports 8000, 8001, etc. might be assigned instead
+
+### Testing Reserved Ports
+
+You can verify that reserved ports are working correctly:
+
+```bash
+# Create a test configuration
+cat > .gopose.yaml << EOF
+port:
+  range:
+    start: 8000
+    end: 8100
+  reserved: [8000, 8001, 8002, 8050]
+EOF
+
+# Run gopose - it will skip the reserved ports
+gopose up --dry-run
+
+# Check the generated compose.override.yml
+# You should see ports starting from 8003 (skipping 8000-8002)
 ```
 
 ## Network Conflict Avoidance
