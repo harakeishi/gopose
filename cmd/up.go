@@ -62,18 +62,19 @@ func parsePortRange(portRangeStr string) (types.PortRange, error) {
 	return types.PortRange{Start: start, End: end}, nil
 }
 
-// createPortConfig はCLIオプションからポート設定を作成します。
-func createPortConfig(portRangeStr string) (types.PortConfig, error) {
-	portRange, err := parsePortRange(portRangeStr)
-	if err != nil {
-		return types.PortConfig{}, err
+// createPortConfig はCLIオプションと設定ファイルからポート設定を作成します。
+// baseConfigをベースとして、portRangeStrが指定されている場合のみ範囲を上書きします。
+func createPortConfig(portRangeStr string, baseConfig types.PortConfig) (types.PortConfig, error) {
+	// CLIでポート範囲が指定されている場合のみ上書き
+	if portRangeStr != "" {
+		portRange, err := parsePortRange(portRangeStr)
+		if err != nil {
+			return types.PortConfig{}, err
+		}
+		baseConfig.Range = portRange
 	}
 
-	return types.PortConfig{
-		Range:             portRange,
-		Reserved:          []int{}, // 予約済みポートは空で開始
-		ExcludePrivileged: true,    // 特権ポートは除外
-	}, nil
+	return baseConfig, nil
 }
 
 // detectWorktreeProjectName は現在の git ワークツリーのトップレベルディレクトリ名を
@@ -144,8 +145,8 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("ロガーの初期化に失敗しました: %w", err)
 		}
 
-		// ポート範囲の解析
-		portConfig, err := createPortConfig(portRange)
+		// ポート設定の作成（設定ファイルの値をベースに、CLIオプションで上書き）
+		portConfig, err := createPortConfig(portRange, cfg.GetPort())
 		if err != nil {
 			return fmt.Errorf("ポート範囲の解析に失敗しました: %w", err)
 		}
@@ -165,7 +166,8 @@ var upCmd = &cobra.Command{
 			types.Field{Key: "output_file", Value: outputFile},
 			types.Field{Key: "project_name", Value: composeProjectName},
 			types.Field{Key: "strategy", Value: strategy},
-			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)})
+			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)},
+			types.Field{Key: "reserved_ports", Value: portConfig.Reserved})
 
 		// Docker Composeファイルの自動検出（指定されていない場合）
 		if filePath == "" || filePath == "compose.yml" {
