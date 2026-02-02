@@ -41,11 +41,9 @@ func TestDetectNetworks(t *testing.T) {
 
 	networks, err := detector.DetectNetworks(ctx)
 
-	// Note: This test may fail if Docker is not running
-	// We'll check for either successful detection or expected error
+	// Skip if Docker is not running
 	if err != nil {
-		t.Logf("DetectNetworks() returned error (Docker may not be running): %v", err)
-		return
+		t.Skip("Docker is not running, skipping integration test")
 	}
 
 	// If Docker is running, we should get at least some networks

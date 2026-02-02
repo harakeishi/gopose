@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -71,23 +72,24 @@ func TestStructuredLoggerFactoryCreateWithName(t *testing.T) {
 
 func TestParseLogLevel(t *testing.T) {
 	tests := []struct {
-		name     string
-		levelStr string
-		// We can't directly compare slog.Level in tests without importing log/slog
-		// So we just test that it doesn't panic
+		name          string
+		levelStr      string
+		expectedLevel slog.Level
 	}{
-		{name: "debug level", levelStr: "debug"},
-		{name: "info level", levelStr: "info"},
-		{name: "warn level", levelStr: "warn"},
-		{name: "error level", levelStr: "error"},
-		{name: "unknown level defaults to info", levelStr: "unknown"},
-		{name: "empty string defaults to info", levelStr: ""},
+		{name: "debug level", levelStr: "debug", expectedLevel: slog.LevelDebug},
+		{name: "info level", levelStr: "info", expectedLevel: slog.LevelInfo},
+		{name: "warn level", levelStr: "warn", expectedLevel: slog.LevelWarn},
+		{name: "error level", levelStr: "error", expectedLevel: slog.LevelError},
+		{name: "unknown level defaults to info", levelStr: "unknown", expectedLevel: slog.LevelInfo},
+		{name: "empty string defaults to info", levelStr: "", expectedLevel: slog.LevelInfo},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Just ensure it doesn't panic
-			_ = parseLogLevel(tt.levelStr)
+			level := parseLogLevel(tt.levelStr)
+			if level != tt.expectedLevel {
+				t.Errorf("parseLogLevel(%q) = %v, want %v", tt.levelStr, level, tt.expectedLevel)
+			}
 		})
 	}
 }

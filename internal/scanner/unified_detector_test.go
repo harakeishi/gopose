@@ -371,6 +371,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		projectName       string
 		expectedConflicts int
 		expectedTypes     []types.NetworkConflictType
+		checkServiceIPs   bool
 	}{
 		{
 			name: "subnet conflict",
@@ -528,6 +529,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			projectName:       "",
 			expectedConflicts: 1,
 			expectedTypes:     []types.NetworkConflictType{types.NetworkConflictTypeSubnet},
+			checkServiceIPs:   true,
 		},
 	}
 
@@ -559,7 +561,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			}
 
 			// verify service IP addresses (for subnet conflict)
-			if tt.name == "subnet conflict with service IP addresses" {
+			if tt.checkServiceIPs {
 				if len(conflicts) > 0 {
 					conflict := conflicts[0]
 					if len(conflict.ServiceIPs) != 2 {

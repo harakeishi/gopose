@@ -3,10 +3,18 @@ package testutil
 import (
 	"context"
 
+	"github.com/harakeishi/gopose/internal/logger"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
-// MockPortDetector はテスト用のモックポート検出器です。
+// NewTestLogger creates a logger for testing with minimal configuration.
+func NewTestLogger() logger.Logger {
+	factory := logger.NewStructuredLoggerFactory(false)
+	l, _ := factory.Create(types.LogConfig{})
+	return l
+}
+
+// MockPortDetector is a mock port detector for testing.
 type MockPortDetector struct {
 	UsedPorts []int
 	Err       error
@@ -44,7 +52,7 @@ func (m *MockPortDetector) IsPortInUse(ctx context.Context, port int) (bool, err
 	return false, nil
 }
 
-// MockPortAllocator はテスト用のモックポート割り当て器です。
+// MockPortAllocator is a mock port allocator for testing.
 type MockPortAllocator struct {
 	NextPort int
 	Err      error
