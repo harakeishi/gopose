@@ -16,7 +16,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 		expectError       bool
 	}{
 		{
-			name:         "設定ファイルの予約ポートを保持",
+			name:         "preserve reserved ports from config",
 			portRangeStr: "",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 9000},
@@ -28,7 +28,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			name:         "CLIでポート範囲を上書きしても予約ポートは保持",
+			name:         "preserve reserved ports when CLI overrides range",
 			portRangeStr: "7000-7999",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 9000},
@@ -40,7 +40,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			name:         "空の予約ポートリスト",
+			name:         "empty reserved ports list",
 			portRangeStr: "",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 9000},
@@ -52,7 +52,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			name:         "多数の予約ポート",
+			name:         "many reserved ports",
 			portRangeStr: "",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 8100},
@@ -64,7 +64,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			name:         "無効なポート範囲形式",
+			name:         "invalid port range format",
 			portRangeStr: "invalid",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 9000},
@@ -74,7 +74,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:         "開始ポートが終了ポートより大きい",
+			name:         "start port greater than end port",
 			portRangeStr: "9000-8000",
 			baseConfig: types.PortConfig{
 				Range:             types.PortRange{Start: 8000, End: 9000},
@@ -101,7 +101,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 				return
 			}
 
-			// ポート範囲の確認
+			// verify port range
 			if result.Range.Start != tt.expectedRange.Start {
 				t.Errorf("createPortConfig() Range.Start = %d, want %d", result.Range.Start, tt.expectedRange.Start)
 			}
@@ -109,7 +109,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 				t.Errorf("createPortConfig() Range.End = %d, want %d", result.Range.End, tt.expectedRange.End)
 			}
 
-			// 予約ポートの確認
+			// verify reserved ports
 			if len(result.Reserved) != len(tt.expectedReserved) {
 				t.Errorf("createPortConfig() Reserved length = %d, want %d", len(result.Reserved), len(tt.expectedReserved))
 				return
@@ -121,7 +121,7 @@ func TestCreatePortConfig_WithReservedPorts(t *testing.T) {
 				}
 			}
 
-			// ExcludePrivilegedが保持されていることを確認
+			// verify ExcludePrivileged is preserved
 			if result.ExcludePrivileged != tt.baseConfig.ExcludePrivileged {
 				t.Errorf("createPortConfig() ExcludePrivileged = %v, want %v", result.ExcludePrivileged, tt.baseConfig.ExcludePrivileged)
 			}
@@ -137,50 +137,50 @@ func TestParsePortRange(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "有効なポート範囲",
+			name:        "valid port range",
 			input:       "8000-9000",
 			expected:    types.PortRange{Start: 8000, End: 9000},
 			expectError: false,
 		},
 		{
-			name:        "空文字列はデフォルト範囲",
+			name:        "empty string uses default range",
 			input:       "",
 			expected:    types.PortRange{Start: 8000, End: 9999},
 			expectError: false,
 		},
 		{
-			name:        "スペース付きの範囲",
+			name:        "range with spaces",
 			input:       "7000 - 7999",
 			expected:    types.PortRange{Start: 7000, End: 7999},
 			expectError: false,
 		},
 		{
-			name:        "無効な形式",
+			name:        "invalid format",
 			input:       "8000",
 			expectError: true,
 		},
 		{
-			name:        "開始ポートが無効",
+			name:        "invalid start port",
 			input:       "abc-9000",
 			expectError: true,
 		},
 		{
-			name:        "終了ポートが無効",
+			name:        "invalid end port",
 			input:       "8000-xyz",
 			expectError: true,
 		},
 		{
-			name:        "範囲外のポート（開始が0以下）",
+			name:        "out of range port (start is 0 or less)",
 			input:       "0-9000",
 			expectError: true,
 		},
 		{
-			name:        "範囲外のポート（終了が65535超）",
+			name:        "out of range port (end exceeds 65535)",
 			input:       "8000-70000",
 			expectError: true,
 		},
 		{
-			name:        "開始が終了より大きい",
+			name:        "start greater than end",
 			input:       "9000-8000",
 			expectError: true,
 		},

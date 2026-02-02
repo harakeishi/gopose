@@ -1,0 +1,6 @@
+# Test file with invalid port format
+services:
+  web:
+    image: nginx
+    ports:
+      - "abc:80"

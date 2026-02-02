@@ -323,7 +323,11 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 	}
 
 	// ポート部分を解析
-	re := regexp.MustCompile(`^(?:([^:]+):)?(\d+):(\d+)$|^(\d+)$`)
+	// 形式: [host_ip:]host_port:container_port または container_port のみ
+	// IPアドレスは数字とドットで構成される (例: 127.0.0.1:8080:80)
+	// Note: ホスト名 (例: localhost:8080:80) は Docker Compose の短縮構文では
+	// サポートされていないため、[\d\.]+ で IP アドレスのみにマッチさせる。
+	re := regexp.MustCompile(`^(?:([\d\.]+):)?(\d+):(\d+)$|^(\d+)$`)
 	matches := re.FindStringSubmatch(portPart)
 
 	if len(matches) == 0 {
