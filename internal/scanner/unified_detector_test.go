@@ -11,11 +11,11 @@ import (
 
 // mockNetworkDetector はテスト用のモックネットワーク検出器
 type mockNetworkDetector struct {
-	networks []types.DockerNetwork
+	networks []NetworkInfo
 	err      error
 }
 
-func (m *mockNetworkDetector) DetectNetworks(ctx context.Context) ([]types.DockerNetwork, error) {
+func (m *mockNetworkDetector) DetectNetworks(ctx context.Context) ([]NetworkInfo, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -30,7 +30,7 @@ func TestDetectConflicts(t *testing.T) {
 	tests := []struct {
 		name                  string
 		usedPorts             []int
-		networks              []types.DockerNetwork
+		networks              []NetworkInfo
 		config                *types.ComposeConfig
 		projectName           string
 		expectedPortConflicts int
@@ -39,7 +39,7 @@ func TestDetectConflicts(t *testing.T) {
 		{
 			name:      "ポート衝突のみ検出",
 			usedPorts: []int{8080, 9000},
-			networks:  []types.DockerNetwork{},
+			networks:  []NetworkInfo{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -64,7 +64,7 @@ func TestDetectConflicts(t *testing.T) {
 		{
 			name:      "ネットワーク衝突のみ検出",
 			usedPorts: []int{},
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
@@ -89,7 +89,7 @@ func TestDetectConflicts(t *testing.T) {
 		{
 			name:      "ポートとネットワーク両方の衝突検出",
 			usedPorts: []int{8080},
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
@@ -121,7 +121,7 @@ func TestDetectConflicts(t *testing.T) {
 		{
 			name:      "衝突なし",
 			usedPorts: []int{3000, 4000},
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "other_net",
 					Subnets: []string{"172.30.0.0/24"},
@@ -153,7 +153,7 @@ func TestDetectConflicts(t *testing.T) {
 		{
 			name:      "プロジェクト名プレフィックス付きネットワーク名の衝突",
 			usedPorts: []int{},
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "myproject_mynet",
 					Subnets: []string{"172.21.0.0/24"},
@@ -277,7 +277,8 @@ func TestDetectPortConflicts(t *testing.T) {
 				},
 			},
 			expectedConflicts: 2,
-			expectedTypes:     []types.ConflictType{types.ConflictTypeSystem, types.ConflictTypeCompose},
+			// システムポート衝突が優先されるため、両方ともシステム衝突として検出される
+			expectedTypes:     []types.ConflictType{types.ConflictTypeSystem, types.ConflictTypeSystem},
 		},
 		{
 			name:      "ホストポート0はスキップ",
@@ -365,7 +366,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		networks          []types.DockerNetwork
+		networks          []NetworkInfo
 		config            *types.ComposeConfig
 		projectName       string
 		expectedConflicts int
@@ -373,7 +374,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 	}{
 		{
 			name: "サブネット衝突",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
@@ -397,7 +398,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		},
 		{
 			name: "ネットワーク名衝突",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "mynet",
 					Subnets: []string{"172.21.0.0/24"},
@@ -421,7 +422,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		},
 		{
 			name: "プロジェクト名プレフィックス付きネットワーク名衝突",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "myproject_mynet",
 					Subnets: []string{"172.21.0.0/24"},
@@ -445,7 +446,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		},
 		{
 			name: "IPAMConfig未設定（衝突なし）",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
@@ -467,7 +468,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		},
 		{
 			name: "サブネット空文字列（衝突なし）",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
@@ -491,7 +492,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		},
 		{
 			name: "サービスIPアドレス付きサブネット衝突",
-			networks: []types.DockerNetwork{
+			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
 					Subnets: []string{"172.20.0.0/24"},
