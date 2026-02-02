@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
@@ -12,7 +13,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatal("DefaultConfig() returned nil")
 	}
 
-	// ポート設定の確認
+	// verify port config
 	if config.Port.Range.Start != 8000 {
 		t.Errorf("Port.Range.Start = %d, want 8000", config.Port.Range.Start)
 	}
@@ -23,7 +24,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Error("Port.ExcludePrivileged = false, want true")
 	}
 
-	// ファイル設定の確認
+	// verify file config
 	if config.File.ComposeFile != "compose.yml" {
 		t.Errorf("File.ComposeFile = %s, want compose.yml", config.File.ComposeFile)
 	}
@@ -34,7 +35,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Error("File.BackupEnabled = false, want true")
 	}
 
-	// Watcher設定の確認
+	// verify watcher config
 	if config.Watcher.Interval != 5*time.Second {
 		t.Errorf("Watcher.Interval = %v, want 5s", config.Watcher.Interval)
 	}
@@ -42,7 +43,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Watcher.MaxRetries = %d, want 3", config.Watcher.MaxRetries)
 	}
 
-	// ログ設定の確認
+	// verify log config
 	if config.Log.Level != "info" {
 		t.Errorf("Log.Level = %s, want info", config.Log.Level)
 	}
@@ -62,14 +63,8 @@ func TestDefaultPortConfig(t *testing.T) {
 	}
 
 	expectedReserved := []int{8080, 8443, 9000, 9090}
-	if len(config.Reserved) != len(expectedReserved) {
-		t.Errorf("Reserved length = %d, want %d", len(config.Reserved), len(expectedReserved))
-	}
-
-	for i, port := range expectedReserved {
-		if config.Reserved[i] != port {
-			t.Errorf("Reserved[%d] = %d, want %d", i, config.Reserved[i], port)
-		}
+	if !reflect.DeepEqual(config.Reserved, expectedReserved) {
+		t.Errorf("Reserved = %v, want %v", config.Reserved, expectedReserved)
 	}
 
 	if !config.ExcludePrivileged {
@@ -147,7 +142,7 @@ func TestDevelopmentConfig(t *testing.T) {
 		t.Errorf("Watcher.Interval = %v, want 2s", config.Watcher.Interval)
 	}
 
-	// 基本設定も正しく継承されているか確認
+	// verify base config is correctly inherited
 	if config.Port.Range.Start != 8000 {
 		t.Errorf("Port.Range.Start = %d, want 8000", config.Port.Range.Start)
 	}
@@ -172,7 +167,7 @@ func TestProductionConfig(t *testing.T) {
 		t.Errorf("Watcher.CleanupDelay = %v, want 60s", config.Watcher.CleanupDelay)
 	}
 
-	// 基本設定も正しく継承されているか確認
+	// verify base config is correctly inherited
 	if config.Port.Range.Start != 8000 {
 		t.Errorf("Port.Range.Start = %d, want 8000", config.Port.Range.Start)
 	}
@@ -197,23 +192,23 @@ func TestTestConfig(t *testing.T) {
 		t.Errorf("Watcher.CleanupDelay = %v, want 1s", config.Watcher.CleanupDelay)
 	}
 
-	// 基本設定も正しく継承されているか確認
+	// verify base config is correctly inherited
 	if config.Port.Range.Start != 8000 {
 		t.Errorf("Port.Range.Start = %d, want 8000", config.Port.Range.Start)
 	}
 }
 
 func TestConfigIsolation(t *testing.T) {
-	// 各設定関数が独立したインスタンスを返すことを確認
+	// verify each config function returns an independent instance
 	config1 := DefaultConfig()
 	config2 := DefaultConfig()
 
-	// ポインタが異なることを確認
+	// verify pointers are different
 	if config1 == config2 {
 		t.Error("DefaultConfig() returns the same pointer, expected different instances")
 	}
 
-	// 一方を変更しても他方に影響しないことを確認
+	// verify modifying one does not affect the other
 	config1.Port.Range.Start = 9999
 	if config2.Port.Range.Start == 9999 {
 		t.Error("Modifying config1 affected config2, expected independence")

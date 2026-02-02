@@ -43,7 +43,7 @@ func TestDetectPortConflicts(t *testing.T) {
 		expectedComposeType int
 	}{
 		{
-			name:      "システムポート衝突",
+			name:      "system port conflict",
 			usedPorts: []int{8080, 9000},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -59,7 +59,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedComposeType: 0,
 		},
 		{
-			name:      "Compose内ポート重複",
+			name:      "compose internal port duplicate",
 			usedPorts: []int{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -80,7 +80,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedComposeType: 1,
 		},
 		{
-			name:      "システムとCompose両方の衝突",
+			name:      "both system and compose conflicts",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -96,12 +96,12 @@ func TestDetectPortConflicts(t *testing.T) {
 					},
 				},
 			},
-			expectedConflicts:   3, // webとapiがシステムポートと衝突(2) + apiがwebと重複(1) = 3
-			expectedSystemType:  2, // webとapi両方がシステムポートと衝突
-			expectedComposeType: 1, // apiがwebと重複
+			expectedConflicts:   3, // web and api conflict with system port (2) + api duplicates with web (1) = 3
+			expectedSystemType:  2, // both web and api conflict with system port
+			expectedComposeType: 1, // api duplicates with web
 		},
 		{
-			name:      "ホストポート0はスキップ",
+			name:      "skip host port 0",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -117,7 +117,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedComposeType: 0,
 		},
 		{
-			name:      "複数サービスで異なるポートを使用（衝突なし）",
+			name:      "multiple services with different ports (no conflict)",
 			usedPorts: []int{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -143,7 +143,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedComposeType: 0,
 		},
 		{
-			name:      "複数のシステムポート衝突",
+			name:      "multiple system port conflicts",
 			usedPorts: []int{8080, 9000, 5432},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -196,7 +196,7 @@ func TestDetectPortConflicts(t *testing.T) {
 					composeTypeCount++
 				}
 
-				// 衝突に説明が含まれることを確認
+				// verify conflict has description
 				if conflict.Description == "" {
 					t.Error("conflict.Description is empty")
 				}
@@ -226,7 +226,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 		expectedSeverities map[string]types.ConflictSeverity
 	}{
 		{
-			name: "有名ポートのシステム衝突（高）",
+			name: "well-known port system conflict (high)",
 			conflicts: []types.Conflict{
 				{
 					ServiceName: "web",
@@ -245,7 +245,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 			},
 		},
 		{
-			name: "非有名ポートのシステム衝突（中）",
+			name: "non-well-known port system conflict (medium)",
 			conflicts: []types.Conflict{
 				{
 					ServiceName: "app",
@@ -258,7 +258,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 			},
 		},
 		{
-			name: "Compose内衝突（高）",
+			name: "compose internal conflict (high)",
 			conflicts: []types.Conflict{
 				{
 					ServiceName: "web",
@@ -271,7 +271,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 			},
 		},
 		{
-			name: "衝突タイプなし（低）",
+			name: "no conflict type (low)",
 			conflicts: []types.Conflict{
 				{
 					ServiceName: "web",
@@ -284,7 +284,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 			},
 		},
 		{
-			name: "混在衝突",
+			name: "mixed conflicts",
 			conflicts: []types.Conflict{
 				{ServiceName: "web", Port: 80, Type: types.ConflictTypeSystem},
 				{ServiceName: "api", Port: 8080, Type: types.ConflictTypeCompose},
@@ -334,10 +334,10 @@ func TestIsWellKnownPort(t *testing.T) {
 		{name: "PostgreSQL", port: 5432, isWellKnown: true},
 		{name: "MySQL", port: 3306, isWellKnown: true},
 		{name: "Redis", port: 6379, isWellKnown: true},
-		{name: "開発用8080", port: 8080, isWellKnown: true},
-		{name: "開発用3000", port: 3000, isWellKnown: true},
-		{name: "非有名ポート", port: 12345, isWellKnown: false},
-		{name: "高ポート", port: 50000, isWellKnown: false},
+		{name: "dev port 8080", port: 8080, isWellKnown: true},
+		{name: "dev port 3000", port: 3000, isWellKnown: true},
+		{name: "non-well-known port", port: 12345, isWellKnown: false},
+		{name: "high port", port: 50000, isWellKnown: false},
 	}
 
 	for _, tt := range tests {
@@ -369,7 +369,7 @@ func TestNewConflictResolverImpl(t *testing.T) {
 		t.Error("logger is nil")
 	}
 
-	// デフォルトポート設定を確認
+	// verify default port config
 	if resolver.portConfig.Range.Start != 8000 {
 		t.Errorf("default portConfig.Range.Start = %d, want 8000", resolver.portConfig.Range.Start)
 	}
@@ -430,7 +430,7 @@ func TestResolvePortConflicts(t *testing.T) {
 		nextPort          int
 	}{
 		{
-			name: "AutoIncrement戦略で単一衝突解決",
+			name: "single conflict resolution with AutoIncrement",
 			conflicts: []types.Conflict{
 				{ServiceName: "web", Port: 8080, Type: types.ConflictTypeSystem},
 			},
@@ -439,7 +439,7 @@ func TestResolvePortConflicts(t *testing.T) {
 			nextPort:         8081,
 		},
 		{
-			name: "AutoIncrement戦略で複数衝突解決",
+			name: "multiple conflict resolution with AutoIncrement",
 			conflicts: []types.Conflict{
 				{ServiceName: "web", Port: 8080, Type: types.ConflictTypeSystem},
 				{ServiceName: "api", Port: 9000, Type: types.ConflictTypeSystem},
@@ -450,7 +450,7 @@ func TestResolvePortConflicts(t *testing.T) {
 			nextPort:         8000,
 		},
 		{
-			name: "RangeAllocation戦略",
+			name: "RangeAllocation strategy",
 			conflicts: []types.Conflict{
 				{ServiceName: "web", Port: 8080, Type: types.ConflictTypeSystem},
 				{ServiceName: "api", Port: 9000, Type: types.ConflictTypeSystem},
@@ -460,14 +460,14 @@ func TestResolvePortConflicts(t *testing.T) {
 			nextPort:         8000,
 		},
 		{
-			name:             "衝突なし",
+			name:             "no conflicts",
 			conflicts:        []types.Conflict{},
 			strategy:         types.ResolutionStrategyAutoIncrement,
 			expectedResolved: 0,
 			nextPort:         8000,
 		},
 		{
-			name: "UserDefined戦略（AutoIncrementにフォールバック）",
+			name: "UserDefined strategy (fallback to AutoIncrement)",
 			conflicts: []types.Conflict{
 				{ServiceName: "web", Port: 8080, Type: types.ConflictTypeSystem},
 			},
@@ -493,7 +493,7 @@ func TestResolvePortConflicts(t *testing.T) {
 					len(resolutions), tt.expectedResolved)
 			}
 
-			// 各解決案の検証
+			// verify each resolution
 			for i, resolution := range resolutions {
 				if resolution.ResolvedPort == 0 {
 					t.Errorf("resolutions[%d].ResolvedPort is 0", i)
@@ -529,7 +529,7 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 		expectedMinSuggestions int
 	}{
 		{
-			name: "通常ポートの提案",
+			name: "suggestions for normal port",
 			conflict: types.Conflict{
 				ServiceName: "web",
 				Port:        8080,
@@ -538,16 +538,16 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 			expectedMinSuggestions: 2, // AutoIncrement + RangeAllocation
 		},
 		{
-			name: "低ポート番号の提案（8000番台への移動提案を含む）",
+			name: "suggestions for low port (including move to 8000 range)",
 			conflict: types.Conflict{
 				ServiceName: "web",
 				Port:        80,
 				Type:        types.ConflictTypeSystem,
 			},
-			expectedMinSuggestions: 3, // AutoIncrement + RangeAllocation + 8000番台移動
+			expectedMinSuggestions: 3, // AutoIncrement + RangeAllocation + move to 8000 range
 		},
 		{
-			name: "高ポート番号の提案",
+			name: "suggestions for high port",
 			conflict: types.Conflict{
 				ServiceName: "app",
 				Port:        50000,
@@ -570,7 +570,7 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 					len(suggestions), tt.expectedMinSuggestions)
 			}
 
-			// 各提案の検証
+			// verify each suggestion
 			for i, suggestion := range suggestions {
 				if suggestion.ResolvedPort == 0 {
 					t.Errorf("suggestions[%d].ResolvedPort is 0", i)
@@ -616,7 +616,7 @@ func TestAnalyzeResolutionEffectiveness(t *testing.T) {
 		expectedSuccessRate    float64
 	}{
 		{
-			name: "全て解決済み",
+			name: "all resolved",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 8081, Strategy: types.ResolutionStrategyAutoIncrement},
 				{ConflictPort: 9000, ResolvedPort: 9001, Strategy: types.ResolutionStrategyAutoIncrement},
@@ -625,7 +625,7 @@ func TestAnalyzeResolutionEffectiveness(t *testing.T) {
 			expectedSuccessRate:   100.0,
 		},
 		{
-			name: "一部未解決",
+			name: "partially unresolved",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 8081, Strategy: types.ResolutionStrategyAutoIncrement},
 				{ConflictPort: 9000, ResolvedPort: 0, Strategy: types.ResolutionStrategyAutoIncrement},
@@ -634,13 +634,13 @@ func TestAnalyzeResolutionEffectiveness(t *testing.T) {
 			expectedSuccessRate:   50.0,
 		},
 		{
-			name:                  "解決案なし",
+			name:                  "no resolutions",
 			resolutions:           []types.ConflictResolution{},
 			expectedResolvedCount: 0,
 			expectedSuccessRate:   0.0,
 		},
 		{
-			name: "全て未解決",
+			name: "all unresolved",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 0, Strategy: types.ResolutionStrategyAutoIncrement},
 				{ConflictPort: 9000, ResolvedPort: 0, Strategy: types.ResolutionStrategyAutoIncrement},
@@ -688,7 +688,7 @@ func TestOptimizeResolutions(t *testing.T) {
 		expectedOptimized   int
 	}{
 		{
-			name: "重複なし",
+			name: "no duplicates",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 8081, ServiceName: "web"},
 				{ConflictPort: 9000, ResolvedPort: 9001, ServiceName: "api"},
@@ -696,15 +696,15 @@ func TestOptimizeResolutions(t *testing.T) {
 			expectedOptimized: 2,
 		},
 		{
-			name: "重複あり（調整される）",
+			name: "with duplicates (adjusted)",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 8081, ServiceName: "web"},
-				{ConflictPort: 9000, ResolvedPort: 8081, ServiceName: "api"}, // 重複
+				{ConflictPort: 9000, ResolvedPort: 8081, ServiceName: "api"}, // duplicate
 			},
 			expectedOptimized: 2,
 		},
 		{
-			name: "複数の重複",
+			name: "multiple duplicates",
 			resolutions: []types.ConflictResolution{
 				{ConflictPort: 8080, ResolvedPort: 8100, ServiceName: "web"},
 				{ConflictPort: 9000, ResolvedPort: 8100, ServiceName: "api"},
@@ -727,7 +727,7 @@ func TestOptimizeResolutions(t *testing.T) {
 					len(optimized), tt.expectedOptimized)
 			}
 
-			// ポートの重複がないことを確認
+			// verify no duplicate ports
 			usedPorts := make(map[int]bool)
 			for _, resolution := range optimized {
 				if usedPorts[resolution.ResolvedPort] {
@@ -750,16 +750,16 @@ func TestGetPortRangeKey(t *testing.T) {
 		port        int
 		expectedKey string
 	}{
-		{name: "システムポート", port: 80, expectedKey: "system_ports"},
-		{name: "システムポート上限", port: 1023, expectedKey: "system_ports"},
-		{name: "登録ポート", port: 1024, expectedKey: "registered_ports"},
-		{name: "登録ポート範囲", port: 3000, expectedKey: "registered_ports"},
-		{name: "カスタムポート", port: 5000, expectedKey: "custom_ports"},
-		{name: "カスタムポート範囲", port: 7999, expectedKey: "custom_ports"},
-		{name: "開発ポート", port: 8000, expectedKey: "development_ports"},
-		{name: "開発ポート範囲", port: 8999, expectedKey: "development_ports"},
-		{name: "高ポート", port: 9000, expectedKey: "high_ports"},
-		{name: "高ポート範囲", port: 50000, expectedKey: "high_ports"},
+		{name: "system port", port: 80, expectedKey: "system_ports"},
+		{name: "system port upper bound", port: 1023, expectedKey: "system_ports"},
+		{name: "registered port", port: 1024, expectedKey: "registered_ports"},
+		{name: "registered port range", port: 3000, expectedKey: "registered_ports"},
+		{name: "custom port", port: 5000, expectedKey: "custom_ports"},
+		{name: "custom port range", port: 7999, expectedKey: "custom_ports"},
+		{name: "development port", port: 8000, expectedKey: "development_ports"},
+		{name: "development port range", port: 8999, expectedKey: "development_ports"},
+		{name: "high port", port: 9000, expectedKey: "high_ports"},
+		{name: "high port range", port: 50000, expectedKey: "high_ports"},
 	}
 
 	for _, tt := range tests {

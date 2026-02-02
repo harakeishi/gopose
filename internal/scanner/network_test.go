@@ -8,7 +8,7 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
-// TestNewDockerNetworkDetector はコンストラクタをテストします。
+// TestNewDockerNetworkDetector tests the constructor.
 func TestNewDockerNetworkDetector(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -27,8 +27,8 @@ func TestNewDockerNetworkDetector(t *testing.T) {
 	}
 }
 
-// TestDetectNetworks はネットワーク検出機能をテストします。
-// Dockerが起動している環境でのみ正常に動作する統合テストです。
+// TestDetectNetworks tests network detection functionality.
+// This is an integration test that only works when Docker is running.
 func TestDetectNetworks(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -69,7 +69,7 @@ func TestDetectNetworks(t *testing.T) {
 	}
 }
 
-// TestDetectNetworksWithCancellation はコンテキストキャンセル時にエラーを返すことをテストします。
+// TestDetectNetworksWithCancellation tests that an error is returned when context is cancelled.
 func TestDetectNetworksWithCancellation(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -89,7 +89,7 @@ func TestDetectNetworksWithCancellation(t *testing.T) {
 	}
 }
 
-// TestNetworkInfoStructure はNetworkInfoデータ構造のテストです。
+// TestNetworkInfoStructure tests the NetworkInfo data structure.
 func TestNetworkInfoStructure(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -140,8 +140,8 @@ func TestNetworkInfoStructure(t *testing.T) {
 	}
 }
 
-// TestDetectNetworksEdgeCases はエッジケースや境界条件をテストし、
-// 検出器が異常な状況を適切に処理することを確認します。
+// TestDetectNetworksEdgeCases tests edge cases and boundary conditions,
+// verifying the detector handles abnormal situations correctly.
 func TestDetectNetworksEdgeCases(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})

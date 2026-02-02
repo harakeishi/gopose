@@ -8,7 +8,7 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
-// mockPortDetector はテスト用のモックポート検出器
+// mockPortDetector is a mock port detector for testing
 type mockPortDetector struct {
 	usedPorts []int
 }
@@ -49,35 +49,35 @@ func TestAllocatePort_WithReservedPorts(t *testing.T) {
 		expectedPort  int
 	}{
 		{
-			name:          "予約ポートをスキップして次の利用可能ポートを割り当て",
+			name:          "skip reserved ports and allocate next available",
 			usedPorts:     []int{},
 			reservedPorts: []int{8000, 8001, 8002},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
 			expectedPort:  8003,
 		},
 		{
-			name:          "使用中ポートと予約ポートの両方をスキップ",
+			name:          "skip both used and reserved ports",
 			usedPorts:     []int{8003, 8004},
 			reservedPorts: []int{8000, 8001, 8002},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
 			expectedPort:  8005,
 		},
 		{
-			name:          "範囲中間の予約ポートをスキップ",
+			name:          "skip reserved ports in middle of range",
 			usedPorts:     []int{},
 			reservedPorts: []int{8010, 8020, 8030},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
 			expectedPort:  8000,
 		},
 		{
-			name:          "最初が予約され、次が利用可能",
+			name:          "first is reserved, next is available",
 			usedPorts:     []int{},
 			reservedPorts: []int{9000},
 			portRange:     types.PortRange{Start: 9000, End: 9100},
 			expectedPort:  9001,
 		},
 		{
-			name:          "複数の予約ポートをスキップ",
+			name:          "skip multiple reserved ports",
 			usedPorts:     []int{},
 			reservedPorts: []int{7000, 7001, 7002, 7003, 7004, 7005, 7006, 7007, 7008, 7009},
 			portRange:     types.PortRange{Start: 7000, End: 7100},
@@ -106,7 +106,7 @@ func TestAllocatePort_WithReservedPorts(t *testing.T) {
 				t.Errorf("AllocatePort() = %d, want %d", port, tt.expectedPort)
 			}
 
-			// 予約ポートに割り当てられていないことを確認
+			// verify not allocated to reserved port
 			for _, reserved := range tt.reservedPorts {
 				if port == reserved {
 					t.Errorf("AllocatePort() = %d, which is a reserved port", port)
@@ -130,7 +130,7 @@ func TestAllocatePorts_WithReservedPorts(t *testing.T) {
 		expectedPorts []int
 	}{
 		{
-			name:          "複数ポート割り当てで予約ポートをスキップ",
+			name:          "skip reserved ports in multi-port allocation",
 			usedPorts:     []int{},
 			reservedPorts: []int{8000, 8001, 8002},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
@@ -138,7 +138,7 @@ func TestAllocatePorts_WithReservedPorts(t *testing.T) {
 			expectedPorts: []int{8003, 8004, 8005},
 		},
 		{
-			name:          "予約ポートと使用中ポートをスキップして連続割り当て",
+			name:          "skip reserved and used ports in sequential allocation",
 			usedPorts:     []int{8004, 8005},
 			reservedPorts: []int{8000, 8001, 8002},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
@@ -146,7 +146,7 @@ func TestAllocatePorts_WithReservedPorts(t *testing.T) {
 			expectedPorts: []int{8003, 8006, 8007},
 		},
 		{
-			name:          "予約ポートが範囲全体に散在",
+			name:          "reserved ports scattered across range",
 			usedPorts:     []int{},
 			reservedPorts: []int{8000, 8002, 8004, 8006, 8008},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
@@ -182,14 +182,14 @@ func TestAllocatePorts_WithReservedPorts(t *testing.T) {
 					t.Errorf("AllocatePorts()[%d] = %d, want %d", i, port, tt.expectedPorts[i])
 				}
 
-				// 予約ポートに割り当てられていないことを確認
+				// verify not allocated to reserved port
 				for _, reserved := range tt.reservedPorts {
 					if port == reserved {
 						t.Errorf("AllocatePorts() allocated reserved port %d", port)
 					}
 				}
 
-				// 使用中ポートに割り当てられていないことを確認
+				// verify not allocated to used port
 				for _, used := range tt.usedPorts {
 					if port == used {
 						t.Errorf("AllocatePorts() allocated used port %d", port)
@@ -214,7 +214,7 @@ func TestAllocatePortsForServices_WithReservedPorts(t *testing.T) {
 		expectedPorts map[string]int
 	}{
 		{
-			name:          "各サービスに予約ポートをスキップして割り当て",
+			name:          "allocate to services skipping reserved ports",
 			usedPorts:     []int{},
 			reservedPorts: []int{8000, 8001},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
@@ -228,7 +228,7 @@ func TestAllocatePortsForServices_WithReservedPorts(t *testing.T) {
 			},
 		},
 		{
-			name:          "予約ポートが散在する中でサービスに割り当て",
+			name:          "allocate to services with scattered reserved ports",
 			usedPorts:     []int{},
 			reservedPorts: []int{8000, 8002, 8004},
 			portRange:     types.PortRange{Start: 8000, End: 8100},
@@ -278,7 +278,7 @@ func TestAllocatePortsForServices_WithReservedPorts(t *testing.T) {
 					t.Errorf("AllocatePortsForServices()[%s] = %d, want %d", serviceName, actualPort, expectedPort)
 				}
 
-				// 予約ポートに割り当てられていないことを確認
+				// verify not allocated to reserved port
 				for _, reserved := range tt.reservedPorts {
 					if actualPort == reserved {
 						t.Errorf("AllocatePortsForServices() allocated reserved port %d to service %s", actualPort, serviceName)
@@ -294,23 +294,23 @@ func TestReservedPorts_UnusedPortsAreStillReserved(t *testing.T) {
 	testLogger, _ := factory.Create(types.LogConfig{})
 	ctx := context.Background()
 
-	// 未使用のポート範囲で、いくつかのポートを予約
-	mockDetector := &mockPortDetector{usedPorts: []int{}} // 使用中のポートなし
+	// reserve some ports in an unused port range
+	mockDetector := &mockPortDetector{usedPorts: []int{}} // no ports in use
 	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
 
 	config := types.PortConfig{
 		Range:             types.PortRange{Start: 9000, End: 9100},
-		Reserved:          []int{9000, 9001, 9002, 9050, 9051, 9052}, // 未使用でも予約
+		Reserved:          []int{9000, 9001, 9002, 9050, 9051, 9052}, // reserved even if unused
 		ExcludePrivileged: false,
 	}
 
-	// 10個のポートを割り当て
+	// allocate 10 ports
 	ports, err := allocator.AllocatePorts(ctx, 10, config)
 	if err != nil {
 		t.Fatalf("AllocatePorts() error = %v, want nil", err)
 	}
 
-	// 予約ポートが割り当てられていないことを確認
+	// verify reserved ports are not allocated
 	reservedMap := make(map[int]bool)
 	for _, reserved := range config.Reserved {
 		reservedMap[reserved] = true
@@ -322,7 +322,7 @@ func TestReservedPorts_UnusedPortsAreStillReserved(t *testing.T) {
 		}
 	}
 
-	// 期待される最初の利用可能ポートは9003（9000-9002は予約済み）
+	// expected first available port is 9003 (9000-9002 are reserved)
 	expectedFirstPort := 9003
 	if ports[0] != expectedFirstPort {
 		t.Errorf("AllocatePorts()[0] = %d, want %d (first non-reserved port)", ports[0], expectedFirstPort)

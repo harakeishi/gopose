@@ -9,7 +9,7 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
-// mockNetworkDetector はテスト用のモックネットワーク検出器
+// mockNetworkDetector is a mock network detector for testing
 type mockNetworkDetector struct {
 	networks []NetworkInfo
 	err      error
@@ -37,7 +37,7 @@ func TestDetectConflicts(t *testing.T) {
 		expectedNetConflicts  int
 	}{
 		{
-			name:      "ポート衝突のみ検出",
+			name:      "detect port conflicts only",
 			usedPorts: []int{8080, 9000},
 			networks:  []NetworkInfo{},
 			config: &types.ComposeConfig{
@@ -62,7 +62,7 @@ func TestDetectConflicts(t *testing.T) {
 			expectedNetConflicts:  0,
 		},
 		{
-			name:      "ネットワーク衝突のみ検出",
+			name:      "detect network conflicts only",
 			usedPorts: []int{},
 			networks: []NetworkInfo{
 				{
@@ -87,7 +87,7 @@ func TestDetectConflicts(t *testing.T) {
 			expectedNetConflicts:  1,
 		},
 		{
-			name:      "ポートとネットワーク両方の衝突検出",
+			name:      "detect both port and network conflicts",
 			usedPorts: []int{8080},
 			networks: []NetworkInfo{
 				{
@@ -119,7 +119,7 @@ func TestDetectConflicts(t *testing.T) {
 			expectedNetConflicts:  1,
 		},
 		{
-			name:      "衝突なし",
+			name:      "no conflicts",
 			usedPorts: []int{3000, 4000},
 			networks: []NetworkInfo{
 				{
@@ -151,7 +151,7 @@ func TestDetectConflicts(t *testing.T) {
 			expectedNetConflicts:  0,
 		},
 		{
-			name:      "プロジェクト名プレフィックス付きネットワーク名の衝突",
+			name:      "network name conflict with project name prefix",
 			usedPorts: []int{},
 			networks: []NetworkInfo{
 				{
@@ -199,12 +199,12 @@ func TestDetectConflicts(t *testing.T) {
 					len(result.NetworkConflicts), tt.expectedNetConflicts)
 			}
 
-			// GeneratedAt が設定されていることを確認
+			// verify GeneratedAt is set
 			if result.GeneratedAt.IsZero() {
 				t.Error("DetectConflicts() GeneratedAt is zero, want non-zero")
 			}
 
-			// 現在時刻との差が1秒未満であることを確認（処理時間を考慮）
+			// verify GeneratedAt is within 1 second (accounting for processing time)
 			if time.Since(result.GeneratedAt) > time.Second {
 				t.Errorf("DetectConflicts() GeneratedAt = %v, too old", result.GeneratedAt)
 			}
@@ -225,7 +225,7 @@ func TestDetectPortConflicts(t *testing.T) {
 		expectedTypes     []types.ConflictType
 	}{
 		{
-			name:      "システムポート衝突",
+			name:      "system port conflict",
 			usedPorts: []int{8080, 9000},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -240,7 +240,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedTypes:     []types.ConflictType{types.ConflictTypeSystem},
 		},
 		{
-			name:      "Compose内ポート重複",
+			name:      "compose internal port duplicate",
 			usedPorts: []int{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -260,7 +260,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedTypes:     []types.ConflictType{types.ConflictTypeCompose},
 		},
 		{
-			name:      "システムとCompose両方の衝突",
+			name:      "both system and compose conflicts",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -277,11 +277,11 @@ func TestDetectPortConflicts(t *testing.T) {
 				},
 			},
 			expectedConflicts: 2,
-			// システムポート衝突が優先されるため、両方ともシステム衝突として検出される
+			// system port conflict takes priority, both detected as system conflict
 			expectedTypes:     []types.ConflictType{types.ConflictTypeSystem, types.ConflictTypeSystem},
 		},
 		{
-			name:      "ホストポート0はスキップ",
+			name:      "skip host port 0",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -296,7 +296,7 @@ func TestDetectPortConflicts(t *testing.T) {
 			expectedTypes:     []types.ConflictType{},
 		},
 		{
-			name:      "複数サービスで異なるポートを使用",
+			name:      "multiple services with different ports",
 			usedPorts: []int{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -339,7 +339,7 @@ func TestDetectPortConflicts(t *testing.T) {
 					len(conflicts), tt.expectedConflicts)
 			}
 
-			// 衝突タイプの確認
+			// verify conflict type
 			for i, conflict := range conflicts {
 				if i < len(tt.expectedTypes) {
 					if conflict.Type != tt.expectedTypes[i] {
@@ -349,7 +349,7 @@ func TestDetectPortConflicts(t *testing.T) {
 				}
 			}
 
-			// 各衝突に説明が含まれることを確認
+			// verify each conflict has description
 			for _, conflict := range conflicts {
 				if conflict.Description == "" {
 					t.Errorf("DetectPortConflicts() conflict description is empty")
@@ -373,7 +373,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 		expectedTypes     []types.NetworkConflictType
 	}{
 		{
-			name: "サブネット衝突",
+			name: "subnet conflict",
 			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
@@ -397,7 +397,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			expectedTypes:     []types.NetworkConflictType{types.NetworkConflictTypeSubnet},
 		},
 		{
-			name: "ネットワーク名衝突",
+			name: "network name conflict",
 			networks: []NetworkInfo{
 				{
 					Name:    "mynet",
@@ -421,7 +421,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			expectedTypes:     []types.NetworkConflictType{types.NetworkConflictTypeName},
 		},
 		{
-			name: "プロジェクト名プレフィックス付きネットワーク名衝突",
+			name: "network name conflict with project prefix",
 			networks: []NetworkInfo{
 				{
 					Name:    "myproject_mynet",
@@ -445,7 +445,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			expectedTypes:     []types.NetworkConflictType{types.NetworkConflictTypeName},
 		},
 		{
-			name: "IPAMConfig未設定（衝突なし）",
+			name: "no IPAM config (no conflict)",
 			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
@@ -467,7 +467,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			expectedTypes:     []types.NetworkConflictType{},
 		},
 		{
-			name: "サブネット空文字列（衝突なし）",
+			name: "empty subnet string (no conflict)",
 			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
@@ -491,7 +491,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 			expectedTypes:     []types.NetworkConflictType{},
 		},
 		{
-			name: "サービスIPアドレス付きサブネット衝突",
+			name: "subnet conflict with service IP addresses",
 			networks: []NetworkInfo{
 				{
 					Name:    "existing_net",
@@ -548,7 +548,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 					len(conflicts), tt.expectedConflicts)
 			}
 
-			// 衝突タイプの確認
+			// verify conflict type
 			for i, conflict := range conflicts {
 				if i < len(tt.expectedTypes) {
 					if conflict.ConflictType != tt.expectedTypes[i] {
@@ -558,8 +558,8 @@ func TestDetectNetworkConflicts(t *testing.T) {
 				}
 			}
 
-			// サービスIPアドレスの確認（サブネット衝突の場合）
-			if tt.name == "サービスIPアドレス付きサブネット衝突" {
+			// verify service IP addresses (for subnet conflict)
+			if tt.name == "subnet conflict with service IP addresses" {
 				if len(conflicts) > 0 {
 					conflict := conflicts[0]
 					if len(conflict.ServiceIPs) != 2 {
@@ -583,7 +583,7 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 		expectedIPs  map[string]string
 	}{
 		{
-			name: "複数サービスのIPアドレスを取得",
+			name: "get IP addresses for multiple services",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -609,7 +609,7 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 			},
 		},
 		{
-			name: "ネットワーク名が一致しない場合は空",
+			name: "empty when network name does not match",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -625,7 +625,7 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 			expectedIPs: map[string]string{},
 		},
 		{
-			name: "IPv4Address未設定の場合はスキップ",
+			name: "skip when IPv4Address is not set",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -641,7 +641,7 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 			expectedIPs: map[string]string{},
 		},
 		{
-			name: "Networksがnilの場合は空",
+			name: "empty when Networks is nil",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -714,7 +714,7 @@ func TestDetectPortConflictsEdgeCases(t *testing.T) {
 		expectedConflicts int
 	}{
 		{
-			name:      "サービスなし",
+			name:      "no services",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{},
@@ -722,7 +722,7 @@ func TestDetectPortConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name:      "ポートマッピングなし",
+			name:      "no port mappings",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -734,7 +734,7 @@ func TestDetectPortConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name:      "全てホストポート0",
+			name:      "all host ports are 0",
 			usedPorts: []int{8080},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -748,7 +748,7 @@ func TestDetectPortConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name:      "同じサービス内で複数ポートマッピング",
+			name:      "multiple port mappings in same service",
 			usedPorts: []int{8080, 8443},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
@@ -797,7 +797,7 @@ func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
 		expectedConflicts int
 	}{
 		{
-			name:     "ネットワークなし",
+			name:     "no networks",
 			networks: []NetworkInfo{},
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{},
@@ -806,7 +806,7 @@ func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name: "Composeにネットワーク定義なし",
+			name: "no network definitions in compose",
 			networks: []NetworkInfo{
 				{Name: "existing", Subnets: []string{"172.20.0.0/24"}},
 			},
@@ -817,7 +817,7 @@ func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name: "IPAM設定なし",
+			name: "no IPAM config",
 			networks: []NetworkInfo{
 				{Name: "existing", Subnets: []string{"172.20.0.0/24"}},
 			},
@@ -834,7 +834,7 @@ func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
 			expectedConflicts: 0,
 		},
 		{
-			name: "複数のネットワーク衝突",
+			name: "multiple network conflicts",
 			networks: []NetworkInfo{
 				{Name: "net1", Subnets: []string{"172.20.0.0/24"}},
 				{Name: "net2", Subnets: []string{"172.21.0.0/24"}},

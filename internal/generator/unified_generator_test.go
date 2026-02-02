@@ -23,7 +23,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 		expectedNetworksCount int
 	}{
 		{
-			name: "ポート衝突の解決",
+			name: "port conflict resolution",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Services: map[string]types.Service{
@@ -52,7 +52,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 			expectedNetworksCount: 0,
 		},
 		{
-			name: "ネットワーク衝突の解決",
+			name: "network conflict resolution",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Networks: map[string]types.Network{
@@ -81,7 +81,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 			expectedNetworksCount: 1,
 		},
 		{
-			name: "ポートとネットワーク両方の衝突解決",
+			name: "both port and network conflict resolution",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Services: map[string]types.Service{
@@ -125,7 +125,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 			expectedNetworksCount: 1,
 		},
 		{
-			name: "サービスIPアドレス再割り当て付きネットワーク解決",
+			name: "network resolution with service IP reassignment",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Networks: map[string]types.Network{
@@ -180,13 +180,13 @@ func TestGenerateFromConflicts(t *testing.T) {
 					len(result.Networks), tt.expectedNetworksCount)
 			}
 
-			// バージョンが保持されていることを確認
+			// verify version is preserved
 			if result.Version != tt.config.Version {
 				t.Errorf("GenerateFromConflicts() Version = %s, want %s",
 					result.Version, tt.config.Version)
 			}
 
-			// メタデータが設定されていることを確認
+			// verify metadata is set
 			if result.Metadata.Version == "" {
 				t.Error("GenerateFromConflicts() Metadata.Version is empty")
 			}
@@ -211,7 +211,7 @@ func TestResolvePortConflicts(t *testing.T) {
 		expectedResolved int
 	}{
 		{
-			name: "単一ポート衝突の解決",
+			name: "single port conflict resolution",
 			portConflicts: []types.PortConflictInfo{
 				{
 					Port:        8080,
@@ -226,7 +226,7 @@ func TestResolvePortConflicts(t *testing.T) {
 			expectedResolved: 1,
 		},
 		{
-			name: "複数ポート衝突の解決",
+			name: "multiple port conflict resolution",
 			portConflicts: []types.PortConflictInfo{
 				{Port: 8080, ServiceName: "web"},
 				{Port: 9000, ServiceName: "api"},
@@ -240,7 +240,7 @@ func TestResolvePortConflicts(t *testing.T) {
 			expectedResolved: 3,
 		},
 		{
-			name:          "衝突なし",
+			name:          "no conflicts",
 			portConflicts: []types.PortConflictInfo{},
 			strategy:      types.ResolutionStrategyAutoIncrement,
 			portConfig: types.PortConfig{
@@ -266,19 +266,19 @@ func TestResolvePortConflicts(t *testing.T) {
 				t.Fatalf("ResolveConflicts() error = %v, want nil", err)
 			}
 
-			// 解決されたポート衝突の数を確認
+			// verify resolved port conflict count
 			resolvedCount := 0
 			for _, conflict := range conflictInfo.PortConflicts {
 				if conflict.Resolution != nil {
 					resolvedCount++
 
-					// 解決ポートが設定されていることを確認
+					// verify resolved port is set
 					if conflict.Resolution.ResolvedPort == 0 {
 						t.Errorf("ResolveConflicts() ResolvedPort is 0 for service %s",
 							conflict.ServiceName)
 					}
 
-					// 理由が設定されていることを確認
+					// verify reason is set
 					if conflict.Resolution.Reason == "" {
 						t.Errorf("ResolveConflicts() Reason is empty for service %s",
 							conflict.ServiceName)
@@ -305,7 +305,7 @@ func TestResolveNetworkConflicts(t *testing.T) {
 		expectedResolved int
 	}{
 		{
-			name: "単一ネットワーク衝突の解決",
+			name: "single network conflict resolution",
 			networkConflicts: []types.NetworkConflictInfo{
 				{
 					NetworkName:    "mynet",
@@ -315,7 +315,7 @@ func TestResolveNetworkConflicts(t *testing.T) {
 			expectedResolved: 1,
 		},
 		{
-			name: "複数ネットワーク衝突の解決",
+			name: "multiple network conflict resolution",
 			networkConflicts: []types.NetworkConflictInfo{
 				{NetworkName: "mynet1", OriginalSubnet: "172.20.0.0/24"},
 				{NetworkName: "mynet2", OriginalSubnet: "172.21.0.0/24"},
@@ -324,7 +324,7 @@ func TestResolveNetworkConflicts(t *testing.T) {
 			expectedResolved: 3,
 		},
 		{
-			name: "サービスIPアドレス付き衝突の解決",
+			name: "conflict resolution with service IP addresses",
 			networkConflicts: []types.NetworkConflictInfo{
 				{
 					NetworkName:    "mynet",
@@ -354,31 +354,31 @@ func TestResolveNetworkConflicts(t *testing.T) {
 				t.Fatalf("ResolveConflicts() error = %v, want nil", err)
 			}
 
-			// 解決されたネットワーク衝突の数を確認
+			// verify resolved network conflict count
 			resolvedCount := 0
 			for _, conflict := range conflictInfo.NetworkConflicts {
 				if conflict.Resolution != nil {
 					resolvedCount++
 
-					// 解決されたサブネットが設定されていることを確認
+					// verify resolved subnet is set
 					if conflict.Resolution.ResolvedSubnet == "" {
 						t.Errorf("ResolveConflicts() ResolvedSubnet is empty for network %s",
 							conflict.NetworkName)
 					}
 
-					// 元のサブネットと異なることを確認
+					// verify differs from original subnet
 					if conflict.Resolution.ResolvedSubnet == conflict.OriginalSubnet {
 						t.Errorf("ResolveConflicts() ResolvedSubnet = OriginalSubnet for network %s",
 							conflict.NetworkName)
 					}
 
-					// 理由が設定されていることを確認
+					// verify reason is set
 					if conflict.Resolution.Reason == "" {
 						t.Errorf("ResolveConflicts() Reason is empty for network %s",
 							conflict.NetworkName)
 					}
 
-					// サービスIPアドレスが再マッピングされていることを確認
+					// verify service IP addresses are remapped
 					if len(conflict.ServiceIPs) > 0 {
 						if len(conflict.Resolution.ServiceIPs) != len(conflict.ServiceIPs) {
 							t.Errorf("ResolveConflicts() ServiceIPs count = %d, want %d",
@@ -406,19 +406,19 @@ func TestAllocateNewSubnet(t *testing.T) {
 		expectedStart string
 	}{
 		{
-			name:         "未使用の場合は10.20.0.0/24から開始",
+			name:         "starts from 10.20.0.0/24 when unused",
 			usedSubnets:  map[string]bool{},
 			expectedStart: "10.20.0.0/24",
 		},
 		{
-			name: "10.20.0.0/24が使用済みの場合は10.21.0.0/24",
+			name: "10.21.0.0/24 when 10.20.0.0/24 is used",
 			usedSubnets: map[string]bool{
 				"10.20.0.0/24": true,
 			},
 			expectedStart: "10.21.0.0/24",
 		},
 		{
-			name: "10.x範囲が全て使用済みの場合は192.168.100.0/24",
+			name: "192.168.100.0/24 when all 10.x range is used",
 			usedSubnets: func() map[string]bool {
 				used := make(map[string]bool)
 				for i := 20; i <= 255; i++ {
@@ -442,16 +442,12 @@ func TestAllocateNewSubnet(t *testing.T) {
 				return
 			}
 
-			// 期待される範囲から開始していることを確認
-			if tt.expectedStart != "" {
-				if result != tt.expectedStart {
-					// 完全一致でなくても、同じ範囲から始まっていればOK
-					// （例: 10.20, 10.21などの連番）
-					t.Logf("allocateNewSubnet() = %s, expected start = %s", result, tt.expectedStart)
-				}
+			// verify exact match with expected subnet
+			if tt.expectedStart != "" && result != tt.expectedStart {
+				t.Errorf("allocateNewSubnet() = %s, want %s", result, tt.expectedStart)
 			}
 
-			// 使用済みサブネットリストに含まれていないことを確認
+			// verify result is not in used subnets list
 			if tt.usedSubnets[result] {
 				t.Errorf("allocateNewSubnet() returned used subnet %s", result)
 			}
@@ -471,7 +467,7 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 		expected   map[string]string
 	}{
 		{
-			name:      "同じホスト部分を維持",
+			name:      "maintain same host part",
 			oldSubnet: "172.20.0.0/24",
 			newSubnet: "172.21.0.0/24",
 			serviceIPs: map[string]string{
@@ -484,7 +480,7 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 			},
 		},
 		{
-			name:      "異なるネットワーククラスへの変更",
+			name:      "change to different network class",
 			oldSubnet: "172.20.0.0/24",
 			newSubnet: "10.30.0.0/24",
 			serviceIPs: map[string]string{
@@ -495,7 +491,7 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 			},
 		},
 		{
-			name:       "空のサービスIPリスト",
+			name:       "empty service IP list",
 			oldSubnet:  "172.20.0.0/24",
 			newSubnet:  "172.21.0.0/24",
 			serviceIPs: map[string]string{},
@@ -542,7 +538,7 @@ func TestGeneratePortOverrides(t *testing.T) {
 		expectedPortUpdated bool
 	}{
 		{
-			name: "解決済みポート衝突のオーバーライド生成",
+			name: "generate override for resolved port conflict",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -565,7 +561,7 @@ func TestGeneratePortOverrides(t *testing.T) {
 			expectedPortUpdated: true,
 		},
 		{
-			name: "複数サービスのポート衝突",
+			name: "multi-service port conflicts",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -600,7 +596,7 @@ func TestGeneratePortOverrides(t *testing.T) {
 			expectedPortUpdated: true,
 		},
 		{
-			name: "解決情報なしの衝突（スキップされる）",
+			name: "conflict without resolution (skipped)",
 			config: &types.ComposeConfig{
 				Services: map[string]types.Service{
 					"web": {
@@ -666,7 +662,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 		expectedServices   int
 	}{
 		{
-			name: "ネットワークサブネット衝突の解決",
+			name: "network subnet conflict resolution",
 			config: &types.ComposeConfig{
 				Networks: map[string]types.Network{
 					"mynet": {},
@@ -685,7 +681,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 			expectedServices: 0,
 		},
 		{
-			name: "サービスIP再割り当て付きネットワーク解決",
+			name: "network resolution with service IP reassignment",
 			config: &types.ComposeConfig{
 				Networks: map[string]types.Network{
 					"mynet": {},
@@ -708,7 +704,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 			expectedServices: 2,
 		},
 		{
-			name: "解決情報なし（スキップされる）",
+			name: "no resolution (skipped)",
 			config: &types.ComposeConfig{
 				Networks: map[string]types.Network{
 					"mynet": {},
@@ -751,7 +747,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 					len(override.Services), tt.expectedServices)
 			}
 
-			// ネットワークオーバーライドの検証
+			// verify network overrides
 			for _, conflict := range tt.networkConflicts {
 				if conflict.Resolution != nil {
 					networkOverride, exists := override.Networks[conflict.NetworkName]
@@ -788,7 +784,7 @@ func TestPopulateMetadata(t *testing.T) {
 		expectedResolutions int
 	}{
 		{
-			name: "解決情報付きポート衝突",
+			name: "port conflict with resolution info",
 			conflictInfo: &types.UnifiedConflictInfo{
 				PortConflicts: []types.PortConflictInfo{
 					{
@@ -815,7 +811,7 @@ func TestPopulateMetadata(t *testing.T) {
 			expectedResolutions: 2,
 		},
 		{
-			name: "解決情報なし（追加されない）",
+			name: "no resolution info (not added)",
 			conflictInfo: &types.UnifiedConflictInfo{
 				PortConflicts: []types.PortConflictInfo{
 					{
@@ -828,7 +824,7 @@ func TestPopulateMetadata(t *testing.T) {
 			expectedResolutions: 0,
 		},
 		{
-			name: "混在（一部に解決情報あり）",
+			name: "mixed (some with resolution info)",
 			conflictInfo: &types.UnifiedConflictInfo{
 				PortConflicts: []types.PortConflictInfo{
 					{
@@ -866,7 +862,7 @@ func TestPopulateMetadata(t *testing.T) {
 					len(override.Metadata.Resolutions), tt.expectedResolutions)
 			}
 
-			// 解決情報の詳細検証
+			// verify resolution details
 			for i, resolution := range override.Metadata.Resolutions {
 				if resolution.ServiceName == "" {
 					t.Errorf("resolution[%d].ServiceName is empty", i)

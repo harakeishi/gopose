@@ -16,37 +16,37 @@ func TestExpandVariables(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "環境変数の展開 - デフォルト値あり",
+			name:     "env var expansion - with default value",
 			input:    "${APP_PORT:-3000}:80",
 			envVars:  map[string]string{},
 			expected: "3000:80",
 		},
 		{
-			name:     "環境変数の展開 - 環境変数が設定されている",
+			name:     "env var expansion - env var is set",
 			input:    "${APP_PORT:-3000}:80",
 			envVars:  map[string]string{"APP_PORT": "4000"},
 			expected: "4000:80",
 		},
 		{
-			name:     "環境変数の展開 - ${VAR}形式",
+			name:     "env var expansion - ${VAR} format",
 			input:    "${PORT}:80",
 			envVars:  map[string]string{"PORT": "5000"},
 			expected: "5000:80",
 		},
 		{
-			name:     "環境変数の展開 - $VAR形式",
+			name:     "env var expansion - $VAR format",
 			input:    "$PORT:80",
 			envVars:  map[string]string{"PORT": "6000"},
 			expected: "6000:80",
 		},
 		{
-			name:     "環境変数の展開 - 複数の変数",
+			name:     "env var expansion - multiple variables",
 			input:    "${HOST_PORT:-8080}:${CONTAINER_PORT:-80}",
 			envVars:  map[string]string{"HOST_PORT": "9090"},
 			expected: "9090:80",
 		},
 		{
-			name:     "環境変数なし",
+			name:     "no env vars",
 			input:    "3000:80",
 			envVars:  map[string]string{},
 			expected: "3000:80",
@@ -55,7 +55,7 @@ func TestExpandVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 環境変数をセット
+			// set env vars
 			for key, value := range tt.envVars {
 				t.Setenv(key, value)
 			}
@@ -82,7 +82,7 @@ func TestParsePortString(t *testing.T) {
 		hasError bool
 	}{
 		{
-			name:    "環境変数展開 - デフォルト値",
+			name:    "env var expansion - default value",
 			input:   "${APP_PORT:-3000}:80",
 			envVars: map[string]string{},
 			expected: &types.PortMapping{
@@ -93,7 +93,7 @@ func TestParsePortString(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:    "環境変数展開 - 環境変数が設定済み",
+			name:    "env var expansion - env var is set",
 			input:   "${APP_PORT:-3000}:80",
 			envVars: map[string]string{"APP_PORT": "4000"},
 			expected: &types.PortMapping{
@@ -104,7 +104,7 @@ func TestParsePortString(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:    "通常のポート形式",
+			name:    "standard port format",
 			input:   "8080:80",
 			envVars: map[string]string{},
 			expected: &types.PortMapping{
@@ -115,7 +115,7 @@ func TestParsePortString(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:    "IPアドレス付き環境変数",
+			name:    "env var with IP address",
 			input:   "127.0.0.1:${PORT:-3000}:80",
 			envVars: map[string]string{},
 			expected: &types.PortMapping{
@@ -127,21 +127,21 @@ func TestParsePortString(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:     "不正なポート形式 - 文字列",
+			name:     "invalid port format - string",
 			input:    "abc:80",
 			envVars:  map[string]string{},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			name:     "不正なポート形式 - 区切り文字エラー",
+			name:     "invalid port format - wrong delimiter",
 			input:    "8080-80",
 			envVars:  map[string]string{},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			name:    "コンテナポートのみ",
+			name:    "container port only",
 			input:   "80",
 			envVars: map[string]string{},
 			expected: &types.PortMapping{
@@ -152,7 +152,7 @@ func TestParsePortString(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:    "プロトコル指定 - UDP",
+			name:    "protocol specified - UDP",
 			input:   "8080:80/udp",
 			envVars: map[string]string{},
 			expected: &types.PortMapping{
@@ -166,17 +166,17 @@ func TestParsePortString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// テストに含まれない環境変数を未設定状態にする
-			// t.Setenv("VAR", "") は空文字列を設定するため、os.Unsetenv を使用
+			// Set env vars not included in this test to empty string
+			// Note: t.Setenv("VAR", "") sets empty string, not truly unset
 			for _, envKey := range []string{"PORT", "APP_PORT", "HOST_PORT", "CONTAINER_PORT"} {
 				if _, exists := tt.envVars[envKey]; !exists {
 					t.Setenv(envKey, "")
-					// 空文字列の設定後にUnsetenvで完全に未設定にする
-					// t.Setenvはテスト終了時に元の値に復元するため安全
+					// This sets empty string (not unset) to prevent interference
+					// t.Setenv restores original value after test completes
 				}
 			}
 
-			// 環境変数をセット
+			// set env vars
 			for key, value := range tt.envVars {
 				t.Setenv(key, value)
 			}
@@ -228,13 +228,13 @@ func TestParseServicePorts(t *testing.T) {
 		hasError bool
 	}{
 		{
-			name:     "空のサービス定義",
+			name:     "empty service definition",
 			service:  map[string]interface{}{},
 			expected: []types.PortMapping{},
 			hasError: false,
 		},
 		{
-			name: "portsが未定義のサービス",
+			name: "service without ports defined",
 			service: map[string]interface{}{
 				"image": "nginx",
 			},
@@ -242,7 +242,7 @@ func TestParseServicePorts(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name: "複数ポート（文字列配列）",
+			name: "multiple ports (string array)",
 			service: map[string]interface{}{
 				"ports": []interface{}{
 					"3000:3000",
@@ -258,7 +258,7 @@ func TestParseServicePorts(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name: "整数形式のポート",
+			name: "integer format ports",
 			service: map[string]interface{}{
 				"ports": []interface{}{
 					80,
@@ -272,7 +272,7 @@ func TestParseServicePorts(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name: "不正なports形式（配列ではない）",
+			name: "invalid ports format (not array)",
 			service: map[string]interface{}{
 				"ports": "8080:80",
 			},
@@ -331,7 +331,7 @@ func TestParsePortObject(t *testing.T) {
 		hasError bool
 	}{
 		{
-			name: "完全なポートオブジェクト",
+			name: "complete port object",
 			portObj: map[string]interface{}{
 				"target":    80,
 				"published": 8080,
@@ -347,7 +347,7 @@ func TestParsePortObject(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name: "最小限のポートオブジェクト",
+			name: "minimal port object",
 			portObj: map[string]interface{}{
 				"target": 80,
 			},
@@ -359,7 +359,7 @@ func TestParsePortObject(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name: "文字列形式のポート番号",
+			name: "string format port numbers",
 			portObj: map[string]interface{}{
 				"target":    "80",
 				"published": "8080",
@@ -417,7 +417,7 @@ func TestParseEnvironment(t *testing.T) {
 		expected map[string]string
 	}{
 		{
-			name: "配列形式 - キー=値",
+			name: "array format - key=value",
 			env: []interface{}{
 				"NODE_ENV=production",
 				"DEBUG=true",
@@ -428,7 +428,7 @@ func TestParseEnvironment(t *testing.T) {
 			},
 		},
 		{
-			name: "配列形式 - キーのみ",
+			name: "array format - key only",
 			env: []interface{}{
 				"API_KEY",
 				"SECRET",
@@ -439,7 +439,7 @@ func TestParseEnvironment(t *testing.T) {
 			},
 		},
 		{
-			name: "マップ形式",
+			name: "map format",
 			env: map[string]interface{}{
 				"NODE_ENV": "development",
 				"PORT":     4000,
@@ -489,7 +489,7 @@ func TestParseDependsOn(t *testing.T) {
 		expected []string
 	}{
 		{
-			name: "配列形式",
+			name: "array format",
 			depends: []interface{}{
 				"db",
 				"cache",
@@ -498,7 +498,7 @@ func TestParseDependsOn(t *testing.T) {
 			expected: []string{"db", "cache", "queue"},
 		},
 		{
-			name: "マップ形式",
+			name: "map format",
 			depends: map[string]interface{}{
 				"db": map[string]interface{}{
 					"condition": "service_healthy",
@@ -525,7 +525,7 @@ func TestParseDependsOn(t *testing.T) {
 				return
 			}
 
-			// マップの順序は保証されないため、containsチェック
+			// map order is not guaranteed, use contains check
 			for _, expected := range tt.expected {
 				found := false
 				for _, item := range result {
@@ -554,7 +554,7 @@ func TestParseNetworks(t *testing.T) {
 		expected map[string]types.ServiceNetwork
 	}{
 		{
-			name: "配列形式 - ネットワーク名のみ",
+			name: "array format - network names only",
 			networks: []interface{}{
 				"backend",
 				"frontend",
@@ -565,7 +565,7 @@ func TestParseNetworks(t *testing.T) {
 			},
 		},
 		{
-			name: "マップ形式 - IPv4アドレス指定",
+			name: "map format - IPv4 address specified",
 			networks: map[string]interface{}{
 				"backend": map[string]interface{}{
 					"ipv4_address": "172.28.0.5",
@@ -576,7 +576,7 @@ func TestParseNetworks(t *testing.T) {
 			},
 		},
 		{
-			name: "マップ形式 - 空の設定",
+			name: "map format - empty config",
 			networks: map[string]interface{}{
 				"backend": map[string]interface{}{},
 			},
@@ -629,7 +629,7 @@ func TestConvertToNetwork(t *testing.T) {
 		hasError    bool
 	}{
 		{
-			name:        "空のネットワーク定義",
+			name:        "empty network definition",
 			networkName: "backend",
 			networkMap:  map[string]interface{}{},
 			expected: types.Network{
@@ -643,7 +643,7 @@ func TestConvertToNetwork(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:        "ipamが未定義のネットワーク",
+			name:        "network without ipam",
 			networkName: "frontend",
 			networkMap: map[string]interface{}{
 				"driver": "bridge",
@@ -659,7 +659,7 @@ func TestConvertToNetwork(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:        "subnetが複数あるケース",
+			name:        "multiple subnets case",
 			networkName: "multi-subnet",
 			networkMap: map[string]interface{}{
 				"driver": "bridge",
@@ -749,7 +749,7 @@ func TestParseComposeFileWithEdgeCases(t *testing.T) {
 		checkFn  func(*testing.T, *types.ComposeConfig)
 	}{
 		{
-			name:     "エッジケースファイル",
+			name:     "edge case file",
 			filepath: "../../testdata/parser/edge_cases.yml",
 			hasError: false,
 			checkFn: func(t *testing.T, config *types.ComposeConfig) {
@@ -757,13 +757,13 @@ func TestParseComposeFileWithEdgeCases(t *testing.T) {
 					t.Fatal("config is nil")
 				}
 
-				// サービス数チェック
+				// check service count
 				expectedServices := 9
 				if len(config.Services) != expectedServices {
 					t.Errorf("Services count = %d, want %d", len(config.Services), expectedServices)
 				}
 
-				// multi-portsサービスのポート数チェック
+				// check port count for multi-ports service
 				if service, exists := config.Services["multi-ports"]; exists {
 					if len(service.Ports) != 3 {
 						t.Errorf("multi-ports has %d ports, want 3", len(service.Ports))
@@ -772,13 +772,13 @@ func TestParseComposeFileWithEdgeCases(t *testing.T) {
 					t.Error("multi-ports service not found")
 				}
 
-				// ネットワーク数チェック
+				// check network count
 				expectedNetworks := 3
 				if len(config.Networks) != expectedNetworks {
 					t.Errorf("Networks count = %d, want %d", len(config.Networks), expectedNetworks)
 				}
 
-				// multi-subnetネットワークのIPAM configチェック
+				// check IPAM config for multi-subnet network
 				if network, exists := config.Networks["multi-subnet"]; exists {
 					if len(network.IPAM.Config) != 2 {
 						t.Errorf("multi-subnet has %d IPAM configs, want 2", len(network.IPAM.Config))
@@ -789,13 +789,13 @@ func TestParseComposeFileWithEdgeCases(t *testing.T) {
 			},
 		},
 		{
-			name:     "不正なポート形式のファイル",
+			name:     "file with invalid port format",
 			filepath: "../../testdata/parser/invalid.yml",
 			hasError: true,
 			checkFn:  nil,
 		},
 		{
-			name:     "存在しないファイル",
+			name:     "nonexistent file",
 			filepath: "testdata/parser/nonexistent.yml",
 			hasError: true,
 			checkFn:  nil,

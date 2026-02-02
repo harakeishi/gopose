@@ -26,7 +26,7 @@ func TestGenerateOverride(t *testing.T) {
 		serviceCount int
 	}{
 		{
-			name: "正常なOverride生成",
+			name: "normal override generation",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Services: map[string]types.Service{
@@ -52,7 +52,7 @@ func TestGenerateOverride(t *testing.T) {
 			serviceCount: 1,
 		},
 		{
-			name: "複数サービスのOverride生成",
+			name: "multi-service override generation",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Services: map[string]types.Service{
@@ -92,7 +92,7 @@ func TestGenerateOverride(t *testing.T) {
 			serviceCount: 2,
 		},
 		{
-			name: "解決案なしのOverride生成",
+			name: "override generation with no resolutions",
 			config: &types.ComposeConfig{
 				Version: "3.8",
 				Services: map[string]types.Service{
@@ -153,7 +153,7 @@ func TestWriteOverrideFile(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "正常なファイル書き込み",
+			name: "normal file write",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{
@@ -175,7 +175,7 @@ func TestWriteOverrideFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 一時ディレクトリを作成
+			// create temp directory
 			tmpDir := t.TempDir()
 			outputPath := filepath.Join(tmpDir, "docker-compose.override.yml")
 
@@ -193,12 +193,12 @@ func TestWriteOverrideFile(t *testing.T) {
 				return
 			}
 
-			// ファイルが作成されたか確認
+			// verify file was created
 			if _, err := os.Stat(outputPath); os.IsNotExist(err) {
 				t.Errorf("WriteOverrideFile() file not created")
 			}
 
-			// ファイル内容を確認
+			// verify file contents
 			content, err := os.ReadFile(outputPath)
 			if err != nil {
 				t.Errorf("Failed to read generated file: %v", err)
@@ -223,7 +223,7 @@ func TestValidateOverride(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "正常なOverride検証",
+			name: "valid override validation",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{
@@ -248,7 +248,7 @@ func TestValidateOverride(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "重複ポートの検出",
+			name: "duplicate port detection",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{
@@ -268,7 +268,7 @@ func TestValidateOverride(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効なポート範囲",
+			name: "invalid port range",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{
@@ -287,7 +287,7 @@ func TestValidateOverride(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "空のサービス",
+			name: "empty services",
 			override: &types.OverrideConfig{
 				Version:  "3.8",
 				Services: map[string]types.ServiceOverride{},
@@ -297,7 +297,7 @@ func TestValidateOverride(t *testing.T) {
 					Resolutions: []types.ConflictResolution{},
 				},
 			},
-			expectError: false, // 警告は出るがエラーではない
+			expectError: false, // produces warning but not error
 		},
 	}
 
@@ -330,7 +330,7 @@ func TestGenerateOverrideYAML(t *testing.T) {
 		contains []string
 	}{
 		{
-			name: "基本的なYAML生成",
+			name: "basic YAML generation",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{
@@ -349,7 +349,7 @@ func TestGenerateOverrideYAML(t *testing.T) {
 			},
 		},
 		{
-			name: "ネットワーク設定を含むYAML生成",
+			name: "YAML generation with network config",
 			override: &types.OverrideConfig{
 				Version: "3.8",
 				Services: map[string]types.ServiceOverride{

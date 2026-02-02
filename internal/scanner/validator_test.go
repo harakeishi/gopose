@@ -15,39 +15,25 @@ func TestValidatePort(t *testing.T) {
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
+	// Basic valid/invalid cases (boundary values tested in TestValidatePortEdgeCases)
 	tests := []struct {
 		name        string
 		port        int
 		expectError bool
 	}{
 		{
-			name:        "有効なポート - 1",
-			port:        1,
-			expectError: false,
-		},
-		{
-			name:        "有効なポート - 8080",
+			name:        "valid port - 8080",
 			port:        8080,
 			expectError: false,
 		},
 		{
-			name:        "有効なポート - 65535",
-			port:        65535,
-			expectError: false,
-		},
-		{
-			name:        "無効なポート - 0",
+			name:        "invalid port - 0",
 			port:        0,
 			expectError: true,
 		},
 		{
-			name:        "無効なポート - 負の数",
+			name:        "invalid port - negative number",
 			port:        -1,
-			expectError: true,
-		},
-		{
-			name:        "無効なポート - 65536",
-			port:        65536,
 			expectError: true,
 		},
 	}
@@ -60,7 +46,7 @@ func TestValidatePort(t *testing.T) {
 				if err == nil {
 					t.Errorf("ValidatePort(%d) expected error, got nil", tt.port)
 				}
-				// エラーコードの確認
+				// verify error code
 				var appErr *errors.AppError
 				if e, ok := err.(*errors.AppError); ok {
 					appErr = e
@@ -89,7 +75,7 @@ func TestValidatePortRange(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "有効な範囲 - 8000-9000",
+			name: "valid range - 8000-9000",
 			portRange: types.PortRange{
 				Start: 8000,
 				End:   9000,
@@ -97,7 +83,7 @@ func TestValidatePortRange(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "有効な範囲 - 全範囲",
+			name: "valid range - full range",
 			portRange: types.PortRange{
 				Start: 1,
 				End:   65535,
@@ -105,7 +91,7 @@ func TestValidatePortRange(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "無効な範囲 - 開始が終了より大きい",
+			name: "invalid range - start greater than end",
 			portRange: types.PortRange{
 				Start: 9000,
 				End:   8000,
@@ -113,7 +99,7 @@ func TestValidatePortRange(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効な範囲 - 開始ポートが0",
+			name: "invalid range - start port is 0",
 			portRange: types.PortRange{
 				Start: 0,
 				End:   9000,
@@ -121,7 +107,7 @@ func TestValidatePortRange(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効な範囲 - 終了ポートが65536",
+			name: "invalid range - end port is 65536",
 			portRange: types.PortRange{
 				Start: 8000,
 				End:   65536,
@@ -159,7 +145,7 @@ func TestValidatePortMapping(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "有効なマッピング - TCP",
+			name: "valid mapping - TCP",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -168,7 +154,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "有効なマッピング - UDP",
+			name: "valid mapping - UDP",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -177,7 +163,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "有効なマッピング - SCTP",
+			name: "valid mapping - SCTP",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -186,7 +172,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "有効なマッピング - プロトコル未指定",
+			name: "valid mapping - no protocol specified",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -195,7 +181,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "無効なマッピング - 無効なホストポート",
+			name: "invalid mapping - invalid host port",
 			mapping: types.PortMapping{
 				Host:      0,
 				Container: 80,
@@ -204,7 +190,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効なマッピング - 無効なコンテナポート",
+			name: "invalid mapping - invalid container port",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 70000,
@@ -213,7 +199,7 @@ func TestValidatePortMapping(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効なマッピング - 無効なプロトコル",
+			name: "invalid mapping - invalid protocol",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -245,7 +231,7 @@ func TestScanAndValidate(t *testing.T) {
 	testLogger, _ := factory.Create(types.LogConfig{})
 	ctx := context.Background()
 
-	// モックを作成
+	// create mock
 	mockDetector := &mockPortDetector{
 		usedPorts: []int{8080, 8081, 8082},
 	}
@@ -263,7 +249,7 @@ func TestScanAndValidate(t *testing.T) {
 		expectError     bool
 	}{
 		{
-			name: "正常なスキャン",
+			name: "normal scan",
 			portRange: types.PortRange{
 				Start: 8000,
 				End:   8100,
@@ -273,7 +259,7 @@ func TestScanAndValidate(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name: "無効な範囲",
+			name: "invalid range",
 			portRange: types.PortRange{
 				Start: 9000,
 				End:   8000,
@@ -305,7 +291,7 @@ func TestScanAndValidate(t *testing.T) {
 				t.Errorf("AvailablePorts count = %d, want %d", len(result.AvailablePorts), tt.expectedAvail)
 			}
 
-			// ポート情報の検証
+			// verify port info
 			if len(result.PortInfo) != len(result.UsedPorts) {
 				t.Errorf("PortInfo count = %d, want %d", len(result.PortInfo), len(result.UsedPorts))
 			}
@@ -339,17 +325,17 @@ func TestValidatePortEdgeCases(t *testing.T) {
 		port        int
 		expectError bool
 	}{
-		{name: "最小有効ポート", port: 1, expectError: false},
-		{name: "最大有効ポート", port: 65535, expectError: false},
-		{name: "ゼロ（無効）", port: 0, expectError: true},
-		{name: "負の数（無効）", port: -1, expectError: true},
-		{name: "最大値超過（無効）", port: 65536, expectError: true},
-		{name: "大きな負の数（無効）", port: -100, expectError: true},
-		{name: "大幅超過（無効）", port: 100000, expectError: true},
-		{name: "一般的なHTTPポート", port: 80, expectError: false},
-		{name: "一般的なHTTPSポート", port: 443, expectError: false},
-		{name: "開発用ポート", port: 3000, expectError: false},
-		{name: "高ポート番号", port: 50000, expectError: false},
+		{name: "minimum valid port", port: 1, expectError: false},
+		{name: "maximum valid port", port: 65535, expectError: false},
+		{name: "zero (invalid)", port: 0, expectError: true},
+		{name: "negative number (invalid)", port: -1, expectError: true},
+		{name: "exceeds maximum (invalid)", port: 65536, expectError: true},
+		{name: "large negative number (invalid)", port: -100, expectError: true},
+		{name: "far exceeds maximum (invalid)", port: 100000, expectError: true},
+		{name: "common HTTP port", port: 80, expectError: false},
+		{name: "common HTTPS port", port: 443, expectError: false},
+		{name: "development port", port: 3000, expectError: false},
+		{name: "high port number", port: 50000, expectError: false},
 	}
 
 	for _, tt := range tests {
@@ -385,44 +371,44 @@ func TestValidatePortRangeEdgeCases(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "最小範囲（1ポート）",
+			name:        "minimum range (1 port)",
 			portRange:   types.PortRange{Start: 8080, End: 8080},
 			expectError: false,
 		},
 		{
-			name:        "全ポート範囲",
+			name:        "full port range",
 			portRange:   types.PortRange{Start: 1, End: 65535},
 			expectError: false,
 		},
 		{
-			name:        "逆順範囲（無効）",
+			name:        "reversed range (invalid)",
 			portRange:   types.PortRange{Start: 9000, End: 8000},
 			expectError: true,
 		},
 		{
-			name:        "開始ポートが0（無効）",
+			name:        "start port is 0 (invalid)",
 			portRange:   types.PortRange{Start: 0, End: 1000},
 			expectError: true,
 		},
 		{
-			name:        "終了ポートが最大値超過（無効）",
+			name:        "end port exceeds maximum (invalid)",
 			portRange:   types.PortRange{Start: 1000, End: 65536},
 			expectError: true,
 		},
 		{
-			name:        "両方とも無効",
+			name:        "both invalid",
 			portRange:   types.PortRange{Start: -1, End: 70000},
 			expectError: true,
 		},
 		{
-			name:        "標準的な範囲",
+			name:        "standard range",
 			portRange:   types.PortRange{Start: 8000, End: 9000},
 			expectError: false,
 		},
 		{
-			name:        "大きな範囲（警告が出る）",
+			name:        "large range (produces warning)",
 			portRange:   types.PortRange{Start: 1, End: 20000},
-			expectError: false, // 警告は出るがエラーではない
+			expectError: false, // produces warning but not error
 		},
 	}
 
@@ -449,7 +435,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "TCPプロトコル",
+			name: "TCP protocol",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -458,7 +444,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "UDPプロトコル",
+			name: "UDP protocol",
 			mapping: types.PortMapping{
 				Host:      53,
 				Container: 53,
@@ -467,7 +453,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "SCTPプロトコル",
+			name: "SCTP protocol",
 			mapping: types.PortMapping{
 				Host:      9899,
 				Container: 9899,
@@ -476,7 +462,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "プロトコル未指定（デフォルトTCP）",
+			name: "no protocol (defaults to TCP)",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -485,7 +471,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "無効なプロトコル",
+			name: "invalid protocol",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -494,7 +480,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "大文字プロトコル（無効）",
+			name: "uppercase protocol (invalid)",
 			mapping: types.PortMapping{
 				Host:      8080,
 				Container: 80,
@@ -503,7 +489,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "無効なホストポートとプロトコル",
+			name: "invalid host port and protocol",
 			mapping: types.PortMapping{
 				Host:      0,
 				Container: 80,
@@ -567,28 +553,28 @@ func TestScanAndValidateWithDifferentRanges(t *testing.T) {
 		expectedAvail   int
 	}{
 		{
-			name:          "空の使用ポート",
+			name:          "empty used ports",
 			usedPorts:     []int{},
 			portRange:     types.PortRange{Start: 8000, End: 8010},
 			expectedUsed:  0,
 			expectedAvail: 11,
 		},
 		{
-			name:          "範囲外の使用ポート",
+			name:          "used ports outside range",
 			usedPorts:     []int{7000, 7500},
 			portRange:     types.PortRange{Start: 8000, End: 8010},
 			expectedUsed:  0,
 			expectedAvail: 11,
 		},
 		{
-			name:          "範囲内の使用ポート",
+			name:          "used ports within range",
 			usedPorts:     []int{8000, 8005, 8010},
 			portRange:     types.PortRange{Start: 8000, End: 8010},
 			expectedUsed:  3,
 			expectedAvail: 8,
 		},
 		{
-			name:          "全て使用中",
+			name:          "all ports in use",
 			usedPorts:     []int{8000, 8001, 8002},
 			portRange:     types.PortRange{Start: 8000, End: 8002},
 			expectedUsed:  3,
@@ -617,7 +603,7 @@ func TestScanAndValidateWithDifferentRanges(t *testing.T) {
 				t.Errorf("AvailablePorts count = %d, want %d", len(result.AvailablePorts), tt.expectedAvail)
 			}
 
-			// 使用ポートと利用可能ポートに重複がないことを確認
+			// verify no overlap between used and available ports
 			usedMap := make(map[int]bool)
 			for _, port := range result.UsedPorts {
 				usedMap[port] = true
