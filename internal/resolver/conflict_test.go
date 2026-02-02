@@ -5,90 +5,14 @@ import (
 	"testing"
 
 	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
-
-// mockPortDetectorForResolver はテスト用のモックポート検出器
-type mockPortDetectorForResolver struct {
-	usedPorts []int
-	err       error
-}
-
-func (m *mockPortDetectorForResolver) DetectUsedPorts(ctx context.Context) ([]int, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.usedPorts, nil
-}
-
-func (m *mockPortDetectorForResolver) DetectUsedPortsInRange(ctx context.Context, portRange types.PortRange) ([]int, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	var portsInRange []int
-	for _, port := range m.usedPorts {
-		if port >= portRange.Start && port <= portRange.End {
-			portsInRange = append(portsInRange, port)
-		}
-	}
-	return portsInRange, nil
-}
-
-func (m *mockPortDetectorForResolver) IsPortInUse(ctx context.Context, port int) (bool, error) {
-	if m.err != nil {
-		return false, m.err
-	}
-	for _, p := range m.usedPorts {
-		if p == port {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// mockPortAllocatorForResolver はテスト用のモックポート割り当て器
-type mockPortAllocatorForResolver struct {
-	nextPort int
-	err      error
-}
-
-func (m *mockPortAllocatorForResolver) AllocatePort(ctx context.Context, config types.PortConfig) (int, error) {
-	if m.err != nil {
-		return 0, m.err
-	}
-	port := m.nextPort
-	m.nextPort++
-	return port, nil
-}
-
-func (m *mockPortAllocatorForResolver) AllocatePorts(ctx context.Context, count int, config types.PortConfig) ([]int, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	ports := make([]int, count)
-	for i := 0; i < count; i++ {
-		ports[i] = m.nextPort
-		m.nextPort++
-	}
-	return ports, nil
-}
-
-func (m *mockPortAllocatorForResolver) AllocatePortsForServices(ctx context.Context, services []types.Service, config types.PortConfig) (map[string]int, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	result := make(map[string]int)
-	for _, service := range services {
-		result[service.Name] = m.nextPort
-		m.nextPort++
-	}
-	return result, nil
-}
 
 func TestNewConflictDetectorImpl(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	mockDetector := &mockPortDetectorForResolver{}
+	mockDetector := &testutil.MockPortDetector{}
 
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
 
@@ -248,7 +172,7 @@ func TestDetectPortConflicts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDetector := &mockPortDetectorForResolver{usedPorts: tt.usedPorts}
+			mockDetector := &testutil.MockPortDetector{UsedPorts: tt.usedPorts}
 			detector := NewConflictDetectorImpl(mockDetector, testLogger)
 
 			conflicts, err := detector.DetectPortConflicts(ctx, tt.config)
@@ -293,7 +217,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
 	ctx := context.Background()
-	mockDetector := &mockPortDetectorForResolver{}
+	mockDetector := &testutil.MockPortDetector{}
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
 
 	tests := []struct {
@@ -396,13 +320,12 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 func TestIsWellKnownPort(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	mockDetector := &mockPortDetectorForResolver{}
+	mockDetector := &testutil.MockPortDetector{}
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
-	_ = detector // 使用する変数として明示
 
 	tests := []struct {
-		name       string
-		port       int
+		name        string
+		port        int
 		isWellKnown bool
 	}{
 		{name: "HTTP", port: 80, isWellKnown: true},
@@ -430,7 +353,7 @@ func TestIsWellKnownPort(t *testing.T) {
 func TestNewConflictResolverImpl(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	mockAllocator := &mockPortAllocatorForResolver{nextPort: 8000}
+	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 
 	resolver := NewConflictResolverImpl(mockAllocator, testLogger)
 
@@ -463,7 +386,7 @@ func TestNewConflictResolverImpl(t *testing.T) {
 func TestNewConflictResolverWithPortConfig(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	mockAllocator := &mockPortAllocatorForResolver{nextPort: 8000}
+	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 
 	customConfig := types.PortConfig{
 		Range:             types.PortRange{Start: 10000, End: 11000},
@@ -556,7 +479,7 @@ func TestResolvePortConflicts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForResolver{nextPort: tt.nextPort}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: tt.nextPort}
 			resolver := NewConflictResolverImpl(mockAllocator, testLogger)
 
 			resolutions, err := resolver.ResolvePortConflicts(ctx, tt.conflicts, tt.strategy)
@@ -597,7 +520,7 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
 	ctx := context.Background()
-	mockAllocator := &mockPortAllocatorForResolver{nextPort: 8081}
+	mockAllocator := &testutil.MockPortAllocator{NextPort: 8081}
 	resolver := NewConflictResolverImpl(mockAllocator, testLogger)
 
 	tests := []struct {

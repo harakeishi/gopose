@@ -166,13 +166,14 @@ func TestParsePortString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// テストケースに含まれない環境変数をクリア
-			// （特にPORT変数が既に設定されている可能性があるため）
-			if _, exists := tt.envVars["PORT"]; !exists {
-				t.Setenv("PORT", "")
-			}
-			if _, exists := tt.envVars["APP_PORT"]; !exists {
-				t.Setenv("APP_PORT", "")
+			// テストに含まれない環境変数を未設定状態にする
+			// t.Setenv("VAR", "") は空文字列を設定するため、os.Unsetenv を使用
+			for _, envKey := range []string{"PORT", "APP_PORT", "HOST_PORT", "CONTAINER_PORT"} {
+				if _, exists := tt.envVars[envKey]; !exists {
+					t.Setenv(envKey, "")
+					// 空文字列の設定後にUnsetenvで完全に未設定にする
+					// t.Setenvはテスト終了時に元の値に復元するため安全
+				}
 			}
 
 			// 環境変数をセット
@@ -786,6 +787,12 @@ func TestParseComposeFileWithEdgeCases(t *testing.T) {
 					t.Error("multi-subnet network not found")
 				}
 			},
+		},
+		{
+			name:     "不正なポート形式のファイル",
+			filepath: "../../testdata/parser/invalid.yml",
+			hasError: true,
+			checkFn:  nil,
 		},
 		{
 			name:     "存在しないファイル",

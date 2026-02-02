@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/harakeishi/gopose/pkg/types"
@@ -14,11 +15,11 @@ func TestNewStructuredLoggerFactory(t *testing.T) {
 		detailed bool
 	}{
 		{
-			name:     "Detailed logger factory",
+			name:     "detailed logger factory",
 			detailed: true,
 		},
 		{
-			name:     "Simple logger factory",
+			name:     "simple logger factory",
 			detailed: false,
 		},
 	}
@@ -211,17 +212,17 @@ func TestFormatJSON(t *testing.T) {
 		contains string
 	}{
 		{
-			name:     "Simple map",
+			name:     "simple map",
 			input:    map[string]string{"key": "value"},
 			contains: "key",
 		},
 		{
-			name:     "Struct",
+			name:     "struct",
 			input:    types.Field{Key: "test", Value: "value"},
-			contains: "Key",
+			contains: "key",
 		},
 		{
-			name:     "String",
+			name:     "string",
 			input:    "test string",
 			contains: "test string",
 		},
@@ -232,6 +233,9 @@ func TestFormatJSON(t *testing.T) {
 			result := FormatJSON(tt.input)
 			if result == "" {
 				t.Error("FormatJSON() returned empty string")
+			}
+			if !strings.Contains(result, tt.contains) {
+				t.Errorf("FormatJSON() = %q, want to contain %q", result, tt.contains)
 			}
 		})
 	}

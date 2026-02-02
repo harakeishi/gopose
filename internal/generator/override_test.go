@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -379,24 +380,10 @@ func TestGenerateOverrideYAML(t *testing.T) {
 			result := generator.generateOverrideYAML(tt.override)
 
 			for _, expected := range tt.contains {
-				if !contains(result, expected) {
+				if !strings.Contains(result, expected) {
 					t.Errorf("generateOverrideYAML() does not contain %q", expected)
 				}
 			}
 		})
 	}
-}
-
-// contains は文字列が部分文字列を含むか確認するヘルパー関数
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

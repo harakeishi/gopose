@@ -2,40 +2,13 @@ package generator
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
-
-// mockPortAllocatorForGenerator はテスト用のモックポートアロケーター
-type mockPortAllocatorForGenerator struct {
-	nextPort int
-}
-
-func (m *mockPortAllocatorForGenerator) AllocatePort(ctx context.Context, config types.PortConfig) (int, error) {
-	port := m.nextPort
-	m.nextPort++
-	return port, nil
-}
-
-func (m *mockPortAllocatorForGenerator) AllocatePorts(ctx context.Context, count int, config types.PortConfig) ([]int, error) {
-	ports := make([]int, count)
-	for i := 0; i < count; i++ {
-		ports[i] = m.nextPort
-		m.nextPort++
-	}
-	return ports, nil
-}
-
-func (m *mockPortAllocatorForGenerator) AllocatePortsForServices(ctx context.Context, services []types.Service, config types.PortConfig) (map[string]int, error) {
-	result := make(map[string]int)
-	for _, service := range services {
-		result[service.Name] = m.nextPort
-		m.nextPort++
-	}
-	return result, nil
-}
 
 func TestGenerateFromConflicts(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
@@ -188,7 +161,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 9000}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: 9000}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			result, err := generator.GenerateFromConflicts(ctx, tt.config, tt.conflictInfo)
@@ -280,7 +253,7 @@ func TestResolvePortConflicts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{nextPort: tt.portConfig.Range.Start}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: tt.portConfig.Range.Start}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			conflictInfo := &types.UnifiedConflictInfo{
@@ -368,7 +341,7 @@ func TestResolveNetworkConflicts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 9000}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: 9000}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			conflictInfo := &types.UnifiedConflictInfo{
@@ -449,7 +422,7 @@ func TestAllocateNewSubnet(t *testing.T) {
 			usedSubnets: func() map[string]bool {
 				used := make(map[string]bool)
 				for i := 20; i <= 255; i++ {
-					used["10."+string(rune(i))+".0.0/24"] = true
+					used[fmt.Sprintf("10.%d.0.0/24", i)] = true
 				}
 				return used
 			}(),
@@ -459,7 +432,7 @@ func TestAllocateNewSubnet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{}
+			mockAllocator := &testutil.MockPortAllocator{}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			result := generator.allocateNewSubnet(tt.usedSubnets)
@@ -532,7 +505,7 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{}
+			mockAllocator := &testutil.MockPortAllocator{}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			result, err := generator.remapIPAddressesToNewSubnet(tt.oldSubnet, tt.newSubnet, tt.serviceIPs)
@@ -651,7 +624,7 @@ func TestGeneratePortOverrides(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			override := &types.OverrideConfig{
@@ -754,7 +727,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+			mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 			override := &types.OverrideConfig{
@@ -806,7 +779,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 func TestPopulateMetadata(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 	generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 
 	tests := []struct {

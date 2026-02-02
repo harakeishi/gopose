@@ -8,7 +8,7 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
-// TestNewDockerNetworkDetector tests the constructor
+// TestNewDockerNetworkDetector はコンストラクタをテストします。
 func TestNewDockerNetworkDetector(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -27,12 +27,8 @@ func TestNewDockerNetworkDetector(t *testing.T) {
 	}
 }
 
-// TestDetectNetworks tests network detection functionality.
-// This is an integration test that requires Docker to be running and accessible.
-// It validates that the detector can:
-// - Execute docker network commands successfully
-// - Parse network information correctly
-// - Handle networks with and without IPAM configuration
+// TestDetectNetworks はネットワーク検出機能をテストします。
+// Dockerが起動している環境でのみ正常に動作する統合テストです。
 func TestDetectNetworks(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -73,8 +69,7 @@ func TestDetectNetworks(t *testing.T) {
 	}
 }
 
-// TestDetectNetworksWithCancellation tests that the detector properly handles
-// context cancellation by returning an error when the context is cancelled.
+// TestDetectNetworksWithCancellation はコンテキストキャンセル時にエラーを返すことをテストします。
 func TestDetectNetworksWithCancellation(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -94,11 +89,7 @@ func TestDetectNetworksWithCancellation(t *testing.T) {
 	}
 }
 
-// TestNetworkInfoStructure tests the NetworkInfo data structure to ensure
-// it correctly represents Docker network information including:
-// - Network names
-// - Subnet configurations (single, multiple, or none)
-// - IPv4 and IPv6 subnets (dual-stack)
+// TestNetworkInfoStructure はNetworkInfoデータ構造のテストです。
 func TestNetworkInfoStructure(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -125,7 +116,7 @@ func TestNetworkInfoStructure(t *testing.T) {
 			wantSubs: 2,
 		},
 		{
-			name: "network with no subnets",
+			name: "network without subnets",
 			network: NetworkInfo{
 				Name:    "noipam",
 				Subnets: []string{},
@@ -149,8 +140,8 @@ func TestNetworkInfoStructure(t *testing.T) {
 	}
 }
 
-// TestDetectNetworksEdgeCases tests various edge cases and boundary conditions
-// to ensure the detector handles unusual situations gracefully.
+// TestDetectNetworksEdgeCases はエッジケースや境界条件をテストし、
+// 検出器が異常な状況を適切に処理することを確認します。
 func TestDetectNetworksEdgeCases(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, err := factory.Create(types.LogConfig{})
@@ -160,15 +151,9 @@ func TestDetectNetworksEdgeCases(t *testing.T) {
 
 	detector := NewDockerNetworkDetector(testLogger)
 
-	t.Run("nil context", func(t *testing.T) {
-		// This should panic or handle gracefully
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("DetectNetworks with nil context panicked (expected): %v", r)
-			}
-		}()
-
+	t.Run("detection with default context", func(t *testing.T) {
 		ctx := context.Background()
+		// Ensure no panic even when Docker is not available
 		_, _ = detector.DetectNetworks(ctx)
 	})
 }
