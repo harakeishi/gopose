@@ -203,7 +203,7 @@ func TestConfigIsolation(t *testing.T) {
 	config1 := DefaultConfig()
 	config2 := DefaultConfig()
 
-	// verify pointers are different
+	// verify pointers are different (== on *Config compares addresses, not values)
 	if config1 == config2 {
 		t.Error("DefaultConfig() returns the same pointer, expected different instances")
 	}

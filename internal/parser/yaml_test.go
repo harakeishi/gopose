@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
@@ -69,8 +69,7 @@ func TestExpandVariables(t *testing.T) {
 }
 
 func TestParsePortString(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 	ctx := context.Background()
 
@@ -216,8 +215,7 @@ func TestParsePortString(t *testing.T) {
 
 // TestParseServicePorts tests the ParseServicePorts method
 func TestParseServicePorts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 	ctx := context.Background()
 
@@ -319,8 +317,7 @@ func TestParseServicePorts(t *testing.T) {
 
 // TestParsePortObject tests the parsePortObject method
 func TestParsePortObject(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 	ctx := context.Background()
 
@@ -407,8 +404,7 @@ func TestParsePortObject(t *testing.T) {
 
 // TestParseEnvironment tests the parseEnvironment method
 func TestParseEnvironment(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 
 	tests := []struct {
@@ -479,8 +475,7 @@ func TestParseEnvironment(t *testing.T) {
 
 // TestParseDependsOn tests the parseDependsOn method
 func TestParseDependsOn(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 
 	tests := []struct {
@@ -544,8 +539,7 @@ func TestParseDependsOn(t *testing.T) {
 
 // TestParseNetworks tests the parseNetworks method
 func TestParseNetworks(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 
 	tests := []struct {
@@ -616,8 +610,7 @@ func TestParseNetworks(t *testing.T) {
 
 // TestConvertToNetwork tests the convertToNetwork method
 func TestConvertToNetwork(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 	ctx := context.Background()
 
@@ -737,8 +730,7 @@ func TestConvertToNetwork(t *testing.T) {
 
 // TestParseComposeFileWithEdgeCases tests parsing edge case YAML files
 func TestParseComposeFileWithEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	parser := NewYamlComposeParser(testLogger)
 	ctx := context.Background()
 

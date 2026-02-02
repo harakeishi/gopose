@@ -4,14 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/harakeishi/gopose/internal/logger"
 	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
 func TestNewConflictDetectorImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockDetector := &testutil.MockPortDetector{}
 
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
@@ -30,8 +28,7 @@ func TestNewConflictDetectorImpl(t *testing.T) {
 }
 
 func TestDetectPortConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -214,8 +211,7 @@ func TestDetectPortConflicts(t *testing.T) {
 }
 
 func TestAnalyzeConflictSeverity(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 	mockDetector := &testutil.MockPortDetector{}
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
@@ -318,8 +314,7 @@ func TestAnalyzeConflictSeverity(t *testing.T) {
 }
 
 func TestIsWellKnownPort(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockDetector := &testutil.MockPortDetector{}
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
 
@@ -351,8 +346,7 @@ func TestIsWellKnownPort(t *testing.T) {
 }
 
 func TestNewConflictResolverImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 
 	resolver := NewConflictResolverImpl(mockAllocator, testLogger)
@@ -384,8 +378,7 @@ func TestNewConflictResolverImpl(t *testing.T) {
 }
 
 func TestNewConflictResolverWithPortConfig(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 
 	customConfig := types.PortConfig{
@@ -418,8 +411,7 @@ func TestNewConflictResolverWithPortConfig(t *testing.T) {
 }
 
 func TestResolvePortConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -517,8 +509,7 @@ func TestResolvePortConflicts(t *testing.T) {
 }
 
 func TestGenerateResolutionSuggestions(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 	mockAllocator := &testutil.MockPortAllocator{NextPort: 8081}
 	resolver := NewConflictResolverImpl(mockAllocator, testLogger)
@@ -590,8 +581,7 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 }
 
 func TestPortResolutionAnalyzerImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	analyzer := NewPortResolutionAnalyzerImpl(testLogger)
 
 	if analyzer == nil {
@@ -604,8 +594,7 @@ func TestPortResolutionAnalyzerImpl(t *testing.T) {
 }
 
 func TestAnalyzeResolutionEffectiveness(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 	analyzer := NewPortResolutionAnalyzerImpl(testLogger)
 
@@ -677,8 +666,7 @@ func TestAnalyzeResolutionEffectiveness(t *testing.T) {
 }
 
 func TestOptimizeResolutions(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 	analyzer := NewPortResolutionAnalyzerImpl(testLogger)
 
@@ -741,8 +729,7 @@ func TestOptimizeResolutions(t *testing.T) {
 }
 
 func TestGetPortRangeKey(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	analyzer := NewPortResolutionAnalyzerImpl(testLogger)
 
 	tests := []struct {

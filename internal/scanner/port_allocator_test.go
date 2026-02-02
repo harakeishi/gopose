@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
@@ -37,8 +37,7 @@ func (m *mockPortDetector) IsPortInUse(ctx context.Context, port int) (bool, err
 }
 
 func TestAllocatePort_WithReservedPorts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -117,8 +116,7 @@ func TestAllocatePort_WithReservedPorts(t *testing.T) {
 }
 
 func TestAllocatePorts_WithReservedPorts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -201,8 +199,7 @@ func TestAllocatePorts_WithReservedPorts(t *testing.T) {
 }
 
 func TestAllocatePortsForServices_WithReservedPorts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -290,8 +287,7 @@ func TestAllocatePortsForServices_WithReservedPorts(t *testing.T) {
 }
 
 func TestReservedPorts_UnusedPortsAreStillReserved(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	// reserve some ports in an unused port range

@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
 func TestGenerateOverride(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	generator := NewOverrideGeneratorImpl(testLogger)
 	ctx := context.Background()
+	fixedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		name         string
@@ -45,7 +45,7 @@ func TestGenerateOverride(t *testing.T) {
 					ResolvedPort: 8081,
 					Strategy:     types.StrategyMinimalChange,
 					Reason:       "Port conflict resolved",
-					Timestamp:    time.Now(),
+					Timestamp:    fixedTime,
 				},
 			},
 			expectError:  false,
@@ -77,7 +77,7 @@ func TestGenerateOverride(t *testing.T) {
 					ResolvedPort: 8081,
 					Strategy:     types.StrategyMinimalChange,
 					Reason:       "Port conflict resolved",
-					Timestamp:    time.Now(),
+					Timestamp:    fixedTime,
 				},
 				{
 					ServiceName:  "api",
@@ -85,7 +85,7 @@ func TestGenerateOverride(t *testing.T) {
 					ResolvedPort: 3001,
 					Strategy:     types.StrategyMinimalChange,
 					Reason:       "Port conflict resolved",
-					Timestamp:    time.Now(),
+					Timestamp:    fixedTime,
 				},
 			},
 			expectError:  false,
@@ -142,10 +142,10 @@ func TestGenerateOverride(t *testing.T) {
 }
 
 func TestWriteOverrideFile(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	generator := NewOverrideGeneratorImpl(testLogger)
 	ctx := context.Background()
+	fixedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		name        string
@@ -164,7 +164,7 @@ func TestWriteOverrideFile(t *testing.T) {
 					},
 				},
 				Metadata: types.OverrideMetadata{
-					GeneratedAt: time.Now(),
+					GeneratedAt: fixedTime,
 					Version:     "1.0.0",
 					Resolutions: []types.ConflictResolution{},
 				},
@@ -212,10 +212,10 @@ func TestWriteOverrideFile(t *testing.T) {
 }
 
 func TestValidateOverride(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	generator := NewOverrideGeneratorImpl(testLogger)
 	ctx := context.Background()
+	fixedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		name        string
@@ -234,7 +234,7 @@ func TestValidateOverride(t *testing.T) {
 					},
 				},
 				Metadata: types.OverrideMetadata{
-					GeneratedAt: time.Now(),
+					GeneratedAt: fixedTime,
 					Version:     "1.0.0",
 					Resolutions: []types.ConflictResolution{
 						{
@@ -260,7 +260,7 @@ func TestValidateOverride(t *testing.T) {
 					},
 				},
 				Metadata: types.OverrideMetadata{
-					GeneratedAt: time.Now(),
+					GeneratedAt: fixedTime,
 					Version:     "1.0.0",
 					Resolutions: []types.ConflictResolution{},
 				},
@@ -279,7 +279,7 @@ func TestValidateOverride(t *testing.T) {
 					},
 				},
 				Metadata: types.OverrideMetadata{
-					GeneratedAt: time.Now(),
+					GeneratedAt: fixedTime,
 					Version:     "1.0.0",
 					Resolutions: []types.ConflictResolution{},
 				},
@@ -292,7 +292,7 @@ func TestValidateOverride(t *testing.T) {
 				Version:  "3.8",
 				Services: map[string]types.ServiceOverride{},
 				Metadata: types.OverrideMetadata{
-					GeneratedAt: time.Now(),
+					GeneratedAt: fixedTime,
 					Version:     "1.0.0",
 					Resolutions: []types.ConflictResolution{},
 				},
@@ -320,8 +320,7 @@ func TestValidateOverride(t *testing.T) {
 }
 
 func TestGenerateOverrideYAML(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	generator := NewOverrideGeneratorImpl(testLogger)
 
 	tests := []struct {

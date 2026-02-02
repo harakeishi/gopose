@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	"github.com/harakeishi/gopose/internal/errors"
-	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
 func TestValidatePort(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -64,8 +63,7 @@ func TestValidatePort(t *testing.T) {
 }
 
 func TestValidatePortRange(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -134,8 +132,7 @@ func TestValidatePortRange(t *testing.T) {
 }
 
 func TestValidatePortMapping(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -227,8 +224,7 @@ func TestValidatePortMapping(t *testing.T) {
 }
 
 func TestScanAndValidate(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	// create mock
@@ -300,8 +296,7 @@ func TestScanAndValidate(t *testing.T) {
 }
 
 func TestNewPortValidatorImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 
 	validator := NewPortValidatorImpl(testLogger)
 
@@ -315,8 +310,7 @@ func TestNewPortValidatorImpl(t *testing.T) {
 }
 
 func TestValidatePortEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -360,8 +354,7 @@ func TestValidatePortEdgeCases(t *testing.T) {
 }
 
 func TestValidatePortRangeEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -424,8 +417,7 @@ func TestValidatePortRangeEdgeCases(t *testing.T) {
 }
 
 func TestValidatePortMappingProtocols(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	validator := NewPortValidatorImpl(testLogger)
 	ctx := context.Background()
 
@@ -511,8 +503,7 @@ func TestValidatePortMappingProtocols(t *testing.T) {
 }
 
 func TestNewPortScannerImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockDetector := &mockPortDetector{}
 	mockAllocator := NewPortAllocatorImpl(mockDetector, testLogger)
 	validator := NewPortValidatorImpl(testLogger)
@@ -541,8 +532,7 @@ func TestNewPortScannerImpl(t *testing.T) {
 }
 
 func TestScanAndValidateWithDifferentRanges(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {

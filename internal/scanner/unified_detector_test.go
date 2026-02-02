@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
@@ -23,8 +23,7 @@ func (m *mockNetworkDetector) DetectNetworks(ctx context.Context) ([]NetworkInfo
 }
 
 func TestDetectConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -213,8 +212,7 @@ func TestDetectConflicts(t *testing.T) {
 }
 
 func TestDetectPortConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -360,8 +358,7 @@ func TestDetectPortConflicts(t *testing.T) {
 }
 
 func TestDetectNetworkConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -575,8 +572,7 @@ func TestDetectNetworkConflicts(t *testing.T) {
 }
 
 func TestGetServiceNetworkIPs(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 
 	tests := []struct {
 		name         string
@@ -680,8 +676,7 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 }
 
 func TestNewUnifiedConflictDetectorImpl(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockPortDetector := &mockPortDetector{}
 	mockNetDetector := &mockNetworkDetector{}
 
@@ -705,8 +700,7 @@ func TestNewUnifiedConflictDetectorImpl(t *testing.T) {
 }
 
 func TestDetectPortConflictsEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -787,8 +781,7 @@ func TestDetectPortConflictsEdgeCases(t *testing.T) {
 }
 
 func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {

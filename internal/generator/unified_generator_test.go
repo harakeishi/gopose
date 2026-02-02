@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/harakeishi/gopose/internal/logger"
 	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
 func TestGenerateFromConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -199,8 +197,7 @@ func TestGenerateFromConflicts(t *testing.T) {
 }
 
 func TestResolvePortConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -295,8 +292,7 @@ func TestResolvePortConflicts(t *testing.T) {
 }
 
 func TestResolveNetworkConflicts(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -397,8 +393,7 @@ func TestResolveNetworkConflicts(t *testing.T) {
 }
 
 func TestAllocateNewSubnet(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 
 	tests := []struct {
 		name         string
@@ -456,8 +451,7 @@ func TestAllocateNewSubnet(t *testing.T) {
 }
 
 func TestRemapIPAddressesToNewSubnet(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 
 	tests := []struct {
 		name       string
@@ -526,8 +520,7 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 }
 
 func TestGeneratePortOverrides(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -650,8 +643,7 @@ func TestGeneratePortOverrides(t *testing.T) {
 }
 
 func TestGenerateNetworkOverrides(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -773,8 +765,7 @@ func TestGenerateNetworkOverrides(t *testing.T) {
 }
 
 func TestPopulateMetadata(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, _ := factory.Create(types.LogConfig{})
+	testLogger := testutil.NewTestLogger()
 	mockAllocator := &testutil.MockPortAllocator{NextPort: 8000}
 	generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
 

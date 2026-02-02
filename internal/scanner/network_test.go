@@ -4,18 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/harakeishi/gopose/internal/logger"
-	"github.com/harakeishi/gopose/pkg/types"
+	"github.com/harakeishi/gopose/internal/testutil"
 )
 
 // TestNewDockerNetworkDetector tests the constructor.
 func TestNewDockerNetworkDetector(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, err := factory.Create(types.LogConfig{})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-
+	testLogger := testutil.NewTestLogger()
 	detector := NewDockerNetworkDetector(testLogger)
 
 	if detector == nil {
@@ -30,12 +24,7 @@ func TestNewDockerNetworkDetector(t *testing.T) {
 // TestDetectNetworks tests network detection functionality.
 // This is an integration test that only works when Docker is running.
 func TestDetectNetworks(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, err := factory.Create(types.LogConfig{})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-
+	testLogger := testutil.NewTestLogger()
 	detector := NewDockerNetworkDetector(testLogger)
 	ctx := context.Background()
 
@@ -46,7 +35,10 @@ func TestDetectNetworks(t *testing.T) {
 		t.Skip("Docker is not running, skipping integration test")
 	}
 
-	// If Docker is running, we should get at least some networks
+	// Docker always has at least bridge, host, and none networks
+	if len(networks) == 0 {
+		t.Error("Expected at least one network (bridge/host/none)")
+	}
 	t.Logf("Detected %d networks", len(networks))
 
 	// Validate structure of returned networks
@@ -69,17 +61,12 @@ func TestDetectNetworks(t *testing.T) {
 
 // TestDetectNetworksWithCancellation tests that an error is returned when context is cancelled.
 func TestDetectNetworksWithCancellation(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, err := factory.Create(types.LogConfig{})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-
+	testLogger := testutil.NewTestLogger()
 	detector := NewDockerNetworkDetector(testLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err = detector.DetectNetworks(ctx)
+	_, err := detector.DetectNetworks(ctx)
 
 	// Should return an error when context is cancelled
 	if err == nil {
@@ -141,11 +128,7 @@ func TestNetworkInfoStructure(t *testing.T) {
 // TestDetectNetworksEdgeCases tests edge cases and boundary conditions,
 // verifying the detector handles abnormal situations correctly.
 func TestDetectNetworksEdgeCases(t *testing.T) {
-	factory := logger.NewStructuredLoggerFactory(false)
-	testLogger, err := factory.Create(types.LogConfig{})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
+	testLogger := testutil.NewTestLogger()
 
 	detector := NewDockerNetworkDetector(testLogger)
 
