@@ -323,7 +323,9 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 	}
 
 	// ポート部分を解析
-	re := regexp.MustCompile(`^(?:([^:]+):)?(\d+):(\d+)$|^(\d+)$`)
+	// 形式: [host_ip:]host_port:container_port または container_port のみ
+	// IPアドレスは数字とドットで構成される
+	re := regexp.MustCompile(`^(?:([\d\.]+):)?(\d+):(\d+)$|^(\d+)$`)
 	matches := re.FindStringSubmatch(portPart)
 
 	if len(matches) == 0 {

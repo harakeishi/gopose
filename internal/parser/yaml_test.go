@@ -130,6 +130,15 @@ func TestParsePortString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// テストケースに含まれない環境変数をクリア
+			// （特にPORT変数が既に設定されている可能性があるため）
+			if _, exists := tt.envVars["PORT"]; !exists {
+				t.Setenv("PORT", "")
+			}
+			if _, exists := tt.envVars["APP_PORT"]; !exists {
+				t.Setenv("APP_PORT", "")
+			}
+
 			// 環境変数をセット
 			for key, value := range tt.envVars {
 				t.Setenv(key, value)
