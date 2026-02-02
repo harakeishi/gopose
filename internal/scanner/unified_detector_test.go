@@ -676,3 +676,208 @@ func TestGetServiceNetworkIPs(t *testing.T) {
 		})
 	}
 }
+
+func TestNewUnifiedConflictDetectorImpl(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	mockPortDetector := &mockPortDetector{}
+	mockNetDetector := &mockNetworkDetector{}
+
+	detector := NewUnifiedConflictDetectorImpl(mockPortDetector, mockNetDetector, testLogger)
+
+	if detector == nil {
+		t.Fatal("NewUnifiedConflictDetectorImpl() returned nil")
+	}
+
+	if detector.portDetector == nil {
+		t.Error("portDetector is nil")
+	}
+
+	if detector.networkDetector == nil {
+		t.Error("networkDetector is nil")
+	}
+
+	if detector.logger == nil {
+		t.Error("logger is nil")
+	}
+}
+
+func TestDetectPortConflictsEdgeCases(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	ctx := context.Background()
+
+	tests := []struct {
+		name              string
+		usedPorts         []int
+		config            *types.ComposeConfig
+		expectedConflicts int
+	}{
+		{
+			name:      "サービスなし",
+			usedPorts: []int{8080},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name:      "ポートマッピングなし",
+			usedPorts: []int{8080},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{},
+					},
+				},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name:      "全てホストポート0",
+			usedPorts: []int{8080},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{
+							{Host: 0, Container: 80},
+						},
+					},
+				},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name:      "同じサービス内で複数ポートマッピング",
+			usedPorts: []int{8080, 8443},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{
+							{Host: 8080, Container: 80},
+							{Host: 8443, Container: 443},
+						},
+					},
+				},
+			},
+			expectedConflicts: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPortDetector := &mockPortDetector{usedPorts: tt.usedPorts}
+			mockNetDetector := &mockNetworkDetector{}
+			detector := NewUnifiedConflictDetectorImpl(mockPortDetector, mockNetDetector, testLogger)
+
+			conflicts, err := detector.DetectPortConflicts(ctx, tt.config)
+
+			if err != nil {
+				t.Fatalf("DetectPortConflicts() unexpected error: %v", err)
+			}
+
+			if len(conflicts) != tt.expectedConflicts {
+				t.Errorf("DetectPortConflicts() conflicts count = %d, want %d",
+					len(conflicts), tt.expectedConflicts)
+			}
+		})
+	}
+}
+
+func TestDetectNetworkConflictsEdgeCases(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	ctx := context.Background()
+
+	tests := []struct {
+		name              string
+		networks          []NetworkInfo
+		config            *types.ComposeConfig
+		projectName       string
+		expectedConflicts int
+	}{
+		{
+			name:     "ネットワークなし",
+			networks: []NetworkInfo{},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{},
+				Networks: map[string]types.Network{},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name: "Composeにネットワーク定義なし",
+			networks: []NetworkInfo{
+				{Name: "existing", Subnets: []string{"172.20.0.0/24"}},
+			},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{},
+				Networks: map[string]types.Network{},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name: "IPAM設定なし",
+			networks: []NetworkInfo{
+				{Name: "existing", Subnets: []string{"172.20.0.0/24"}},
+			},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{},
+				Networks: map[string]types.Network{
+					"mynet": {
+						IPAM: types.IPAM{
+							Config: []types.IPAMConfig{},
+						},
+					},
+				},
+			},
+			expectedConflicts: 0,
+		},
+		{
+			name: "複数のネットワーク衝突",
+			networks: []NetworkInfo{
+				{Name: "net1", Subnets: []string{"172.20.0.0/24"}},
+				{Name: "net2", Subnets: []string{"172.21.0.0/24"}},
+			},
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{},
+				Networks: map[string]types.Network{
+					"mynet1": {
+						IPAM: types.IPAM{
+							Config: []types.IPAMConfig{
+								{Subnet: "172.20.0.0/24"},
+							},
+						},
+					},
+					"mynet2": {
+						IPAM: types.IPAM{
+							Config: []types.IPAMConfig{
+								{Subnet: "172.21.0.0/24"},
+							},
+						},
+					},
+				},
+			},
+			expectedConflicts: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPortDetector := &mockPortDetector{}
+			mockNetDetector := &mockNetworkDetector{networks: tt.networks}
+			detector := NewUnifiedConflictDetectorImpl(mockPortDetector, mockNetDetector, testLogger)
+
+			conflicts, err := detector.DetectNetworkConflicts(ctx, tt.config, tt.projectName)
+
+			if err != nil {
+				t.Fatalf("DetectNetworkConflicts() unexpected error: %v", err)
+			}
+
+			if len(conflicts) != tt.expectedConflicts {
+				t.Errorf("DetectNetworkConflicts() conflicts count = %d, want %d",
+					len(conflicts), tt.expectedConflicts)
+			}
+		})
+	}
+}

@@ -555,3 +555,356 @@ func TestRemapIPAddressesToNewSubnet(t *testing.T) {
 		})
 	}
 }
+
+func TestGeneratePortOverrides(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	ctx := context.Background()
+
+	tests := []struct {
+		name            string
+		config          *types.ComposeConfig
+		portConflicts   []types.PortConflictInfo
+		expectedServices int
+		expectedPortUpdated bool
+	}{
+		{
+			name: "解決済みポート衝突のオーバーライド生成",
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{
+							{Host: 8080, Container: 80, Protocol: "tcp"},
+						},
+					},
+				},
+			},
+			portConflicts: []types.PortConflictInfo{
+				{
+					ServiceName: "web",
+					Port:        8080,
+					Resolution: &types.PortResolutionInfo{
+						ResolvedPort: 8081,
+					},
+				},
+			},
+			expectedServices: 1,
+			expectedPortUpdated: true,
+		},
+		{
+			name: "複数サービスのポート衝突",
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{
+							{Host: 8080, Container: 80},
+						},
+					},
+					"api": {
+						Ports: []types.PortMapping{
+							{Host: 9000, Container: 3000},
+						},
+					},
+				},
+			},
+			portConflicts: []types.PortConflictInfo{
+				{
+					ServiceName: "web",
+					Port:        8080,
+					Resolution: &types.PortResolutionInfo{
+						ResolvedPort: 8081,
+					},
+				},
+				{
+					ServiceName: "api",
+					Port:        9000,
+					Resolution: &types.PortResolutionInfo{
+						ResolvedPort: 9001,
+					},
+				},
+			},
+			expectedServices: 2,
+			expectedPortUpdated: true,
+		},
+		{
+			name: "解決情報なしの衝突（スキップされる）",
+			config: &types.ComposeConfig{
+				Services: map[string]types.Service{
+					"web": {
+						Ports: []types.PortMapping{
+							{Host: 8080, Container: 80},
+						},
+					},
+				},
+			},
+			portConflicts: []types.PortConflictInfo{
+				{
+					ServiceName: "web",
+					Port:        8080,
+					Resolution:  nil,
+				},
+			},
+			expectedServices: 1,
+			expectedPortUpdated: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
+
+			override := &types.OverrideConfig{
+				Services: make(map[string]types.ServiceOverride),
+			}
+
+			err := generator.generatePortOverrides(ctx, tt.config, tt.portConflicts, override)
+
+			if err != nil {
+				t.Fatalf("generatePortOverrides() error = %v, want nil", err)
+			}
+
+			if len(override.Services) != tt.expectedServices {
+				t.Errorf("len(override.Services) = %d, want %d",
+					len(override.Services), tt.expectedServices)
+			}
+
+			if tt.expectedPortUpdated && len(override.Services) > 0 {
+				for serviceName, serviceOverride := range override.Services {
+					if len(serviceOverride.Ports) == 0 {
+						t.Errorf("Service %s has no port overrides", serviceName)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateNetworkOverrides(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	ctx := context.Background()
+
+	tests := []struct {
+		name               string
+		config             *types.ComposeConfig
+		networkConflicts   []types.NetworkConflictInfo
+		expectedNetworks   int
+		expectedServices   int
+	}{
+		{
+			name: "ネットワークサブネット衝突の解決",
+			config: &types.ComposeConfig{
+				Networks: map[string]types.Network{
+					"mynet": {},
+				},
+			},
+			networkConflicts: []types.NetworkConflictInfo{
+				{
+					NetworkName:    "mynet",
+					OriginalSubnet: "172.20.0.0/24",
+					Resolution: &types.NetworkResolutionInfo{
+						ResolvedSubnet: "10.20.0.0/24",
+					},
+				},
+			},
+			expectedNetworks: 1,
+			expectedServices: 0,
+		},
+		{
+			name: "サービスIP再割り当て付きネットワーク解決",
+			config: &types.ComposeConfig{
+				Networks: map[string]types.Network{
+					"mynet": {},
+				},
+			},
+			networkConflicts: []types.NetworkConflictInfo{
+				{
+					NetworkName:    "mynet",
+					OriginalSubnet: "172.20.0.0/24",
+					Resolution: &types.NetworkResolutionInfo{
+						ResolvedSubnet: "10.20.0.0/24",
+						ServiceIPs: map[string]string{
+							"web": "10.20.0.10",
+							"db":  "10.20.0.20",
+						},
+					},
+				},
+			},
+			expectedNetworks: 1,
+			expectedServices: 2,
+		},
+		{
+			name: "解決情報なし（スキップされる）",
+			config: &types.ComposeConfig{
+				Networks: map[string]types.Network{
+					"mynet": {},
+				},
+			},
+			networkConflicts: []types.NetworkConflictInfo{
+				{
+					NetworkName: "mynet",
+					Resolution:  nil,
+				},
+			},
+			expectedNetworks: 0,
+			expectedServices: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+			generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
+
+			override := &types.OverrideConfig{
+				Services: make(map[string]types.ServiceOverride),
+				Networks: make(map[string]types.NetworkOverride),
+			}
+
+			err := generator.generateNetworkOverrides(ctx, tt.config, tt.networkConflicts, override)
+
+			if err != nil {
+				t.Fatalf("generateNetworkOverrides() error = %v, want nil", err)
+			}
+
+			if len(override.Networks) != tt.expectedNetworks {
+				t.Errorf("len(override.Networks) = %d, want %d",
+					len(override.Networks), tt.expectedNetworks)
+			}
+
+			if len(override.Services) != tt.expectedServices {
+				t.Errorf("len(override.Services) = %d, want %d",
+					len(override.Services), tt.expectedServices)
+			}
+
+			// ネットワークオーバーライドの検証
+			for _, conflict := range tt.networkConflicts {
+				if conflict.Resolution != nil {
+					networkOverride, exists := override.Networks[conflict.NetworkName]
+					if !exists {
+						t.Errorf("Network override not found for %s", conflict.NetworkName)
+						continue
+					}
+
+					if len(networkOverride.IPAM.Config) == 0 {
+						t.Error("IPAM config is empty")
+						continue
+					}
+
+					if networkOverride.IPAM.Config[0].Subnet != conflict.Resolution.ResolvedSubnet {
+						t.Errorf("Subnet = %s, want %s",
+							networkOverride.IPAM.Config[0].Subnet,
+							conflict.Resolution.ResolvedSubnet)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestPopulateMetadata(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	mockAllocator := &mockPortAllocatorForGenerator{nextPort: 8000}
+	generator := NewUnifiedOverrideGeneratorImpl(mockAllocator, testLogger)
+
+	tests := []struct {
+		name                string
+		conflictInfo        *types.UnifiedConflictInfo
+		expectedResolutions int
+	}{
+		{
+			name: "解決情報付きポート衝突",
+			conflictInfo: &types.UnifiedConflictInfo{
+				PortConflicts: []types.PortConflictInfo{
+					{
+						ServiceName: "web",
+						Service:     "web",
+						Port:        8080,
+						Resolution: &types.PortResolutionInfo{
+							ResolvedPort: 8081,
+							Strategy:     types.ResolutionStrategyAutoIncrement,
+							Reason:       "Test reason",
+						},
+					},
+					{
+						ServiceName: "api",
+						Port:        9000,
+						Resolution: &types.PortResolutionInfo{
+							ResolvedPort: 9001,
+							Strategy:     types.ResolutionStrategyAutoIncrement,
+							Reason:       "Another reason",
+						},
+					},
+				},
+			},
+			expectedResolutions: 2,
+		},
+		{
+			name: "解決情報なし（追加されない）",
+			conflictInfo: &types.UnifiedConflictInfo{
+				PortConflicts: []types.PortConflictInfo{
+					{
+						ServiceName: "web",
+						Port:        8080,
+						Resolution:  nil,
+					},
+				},
+			},
+			expectedResolutions: 0,
+		},
+		{
+			name: "混在（一部に解決情報あり）",
+			conflictInfo: &types.UnifiedConflictInfo{
+				PortConflicts: []types.PortConflictInfo{
+					{
+						ServiceName: "web",
+						Port:        8080,
+						Resolution: &types.PortResolutionInfo{
+							ResolvedPort: 8081,
+							Strategy:     types.ResolutionStrategyAutoIncrement,
+							Reason:       "Test",
+						},
+					},
+					{
+						ServiceName: "api",
+						Port:        9000,
+						Resolution:  nil,
+					},
+				},
+			},
+			expectedResolutions: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			override := &types.OverrideConfig{
+				Metadata: types.OverrideMetadata{
+					Resolutions: []types.ConflictResolution{},
+				},
+			}
+
+			generator.populateMetadata(tt.conflictInfo, override)
+
+			if len(override.Metadata.Resolutions) != tt.expectedResolutions {
+				t.Errorf("len(override.Metadata.Resolutions) = %d, want %d",
+					len(override.Metadata.Resolutions), tt.expectedResolutions)
+			}
+
+			// 解決情報の詳細検証
+			for i, resolution := range override.Metadata.Resolutions {
+				if resolution.ServiceName == "" {
+					t.Errorf("resolution[%d].ServiceName is empty", i)
+				}
+				if resolution.ConflictPort == 0 {
+					t.Errorf("resolution[%d].ConflictPort is 0", i)
+				}
+				if resolution.ResolvedPort == 0 {
+					t.Errorf("resolution[%d].ResolvedPort is 0", i)
+				}
+			}
+		})
+	}
+}

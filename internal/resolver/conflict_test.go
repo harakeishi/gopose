@@ -172,9 +172,9 @@ func TestDetectPortConflicts(t *testing.T) {
 					},
 				},
 			},
-			expectedConflicts:   2,
-			expectedSystemType:  1,
-			expectedComposeType: 1,
+			expectedConflicts:   3, // webとapiがシステムポートと衝突(2) + apiがwebと重複(1) = 3
+			expectedSystemType:  2, // webとapi両方がシステムポートと衝突
+			expectedComposeType: 1, // apiがwebと重複
 		},
 		{
 			name:      "ホストポート0はスキップ",
@@ -398,6 +398,7 @@ func TestIsWellKnownPort(t *testing.T) {
 	testLogger, _ := factory.Create(types.LogConfig{})
 	mockDetector := &mockPortDetectorForResolver{}
 	detector := NewConflictDetectorImpl(mockDetector, testLogger)
+	_ = detector // 使用する変数として明示
 
 	tests := []struct {
 		name       string
@@ -668,8 +669,6 @@ func TestGenerateResolutionSuggestions(t *testing.T) {
 func TestPortResolutionAnalyzerImpl(t *testing.T) {
 	factory := logger.NewStructuredLoggerFactory(false)
 	testLogger, _ := factory.Create(types.LogConfig{})
-	ctx := context.Background()
-
 	analyzer := NewPortResolutionAnalyzerImpl(testLogger)
 
 	if analyzer == nil {
