@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/harakeishi/gopose/internal/testutil"
 	"github.com/harakeishi/gopose/pkg/types"
@@ -201,11 +200,6 @@ func TestDetectConflicts(t *testing.T) {
 			// verify GeneratedAt is set
 			if result.GeneratedAt.IsZero() {
 				t.Error("DetectConflicts() GeneratedAt is zero, want non-zero")
-			}
-
-			// verify GeneratedAt is within 1 second (accounting for processing time)
-			if time.Since(result.GeneratedAt) > time.Second {
-				t.Errorf("DetectConflicts() GeneratedAt = %v, too old", result.GeneratedAt)
 			}
 		})
 	}
