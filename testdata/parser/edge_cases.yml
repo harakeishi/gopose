@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  # 空のサービス定義
+  empty-service:
+    image: nginx
+
+  # portsが未定義のサービス
+  no-ports:
+    image: redis
+    networks:
+      - backend
+
+  # networksのみ定義されたサービス
+  networks-only:
+    image: postgres
+    networks:
+      backend:
+        ipv4_address: 172.28.0.5
+
+  # 複数ポート（配列）
+  multi-ports:
+    image: app
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "3002:3002/udp"
+
+  # オブジェクト形式のポート
+  object-ports:
+    image: web
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+        host_ip: 127.0.0.1
+
+  # 環境変数（配列形式）
+  env-array:
+    image: test
+    environment:
+      - NODE_ENV=production
+      - DEBUG=true
+      - API_KEY
+
+  # 環境変数（マップ形式）
+  env-map:
+    image: test2
+    environment:
+      NODE_ENV: development
+      DEBUG: "false"
+      PORT: 4000
+
+  # 依存関係（配列形式）
+  depends-array:
+    image: app
+    depends_on:
+      - db
+      - cache
+
+  # 依存関係（マップ形式）
+  depends-map:
+    image: app2
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+
+networks:
+  # 空のネットワーク定義
+  backend: {}
+
+  # ipamが未定義のネットワーク
+  frontend:
+    driver: bridge
+
+  # subnetが複数あるケース
+  multi-subnet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+        - subnet: 172.29.0.0/16
+          gateway: 172.29.0.1

@@ -1,0 +1,25 @@
+# 不正なYAML形式のテスト用ファイル
+
+# Case 1: Invalid port format (non-numeric)
+invalid_port_string:
+  services:
+    web:
+      image: nginx
+      ports:
+        - "abc:80"
+
+# Case 2: Invalid port range
+invalid_port_range:
+  services:
+    web:
+      image: nginx
+      ports:
+        - "99999:80"
+
+# Case 3: Invalid port format (wrong separator)
+invalid_port_separator:
+  services:
+    web:
+      image: nginx
+      ports:
+        - "8080-80"

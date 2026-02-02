@@ -126,6 +126,42 @@ func TestParsePortString(t *testing.T) {
 			},
 			hasError: false,
 		},
+		{
+			name:     "不正なポート形式 - 文字列",
+			input:    "abc:80",
+			envVars:  map[string]string{},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			name:     "不正なポート形式 - 区切り文字エラー",
+			input:    "8080-80",
+			envVars:  map[string]string{},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			name:    "コンテナポートのみ",
+			input:   "80",
+			envVars: map[string]string{},
+			expected: &types.PortMapping{
+				Host:      0,
+				Container: 80,
+				Protocol:  "tcp",
+			},
+			hasError: false,
+		},
+		{
+			name:    "プロトコル指定 - UDP",
+			input:   "8080:80/udp",
+			envVars: map[string]string{},
+			expected: &types.PortMapping{
+				Host:      8080,
+				Container: 80,
+				Protocol:  "udp",
+			},
+			hasError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -172,6 +208,611 @@ func TestParsePortString(t *testing.T) {
 
 			if result.HostIP != tt.expected.HostIP {
 				t.Errorf("parsePortString(%q) HostIP = %q, want %q", tt.input, result.HostIP, tt.expected.HostIP)
+			}
+		})
+	}
+}
+
+// TestParseServicePorts tests the ParseServicePorts method
+func TestParseServicePorts(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		service  map[string]interface{}
+		expected []types.PortMapping
+		hasError bool
+	}{
+		{
+			name:     "空のサービス定義",
+			service:  map[string]interface{}{},
+			expected: []types.PortMapping{},
+			hasError: false,
+		},
+		{
+			name: "portsが未定義のサービス",
+			service: map[string]interface{}{
+				"image": "nginx",
+			},
+			expected: []types.PortMapping{},
+			hasError: false,
+		},
+		{
+			name: "複数ポート（文字列配列）",
+			service: map[string]interface{}{
+				"ports": []interface{}{
+					"3000:3000",
+					"3001:3001",
+					"3002:3002/udp",
+				},
+			},
+			expected: []types.PortMapping{
+				{Host: 3000, Container: 3000, Protocol: "tcp"},
+				{Host: 3001, Container: 3001, Protocol: "tcp"},
+				{Host: 3002, Container: 3002, Protocol: "udp"},
+			},
+			hasError: false,
+		},
+		{
+			name: "整数形式のポート",
+			service: map[string]interface{}{
+				"ports": []interface{}{
+					80,
+					443,
+				},
+			},
+			expected: []types.PortMapping{
+				{Host: 0, Container: 80, Protocol: "tcp"},
+				{Host: 0, Container: 443, Protocol: "tcp"},
+			},
+			hasError: false,
+		},
+		{
+			name: "不正なports形式（配列ではない）",
+			service: map[string]interface{}{
+				"ports": "8080:80",
+			},
+			expected: nil,
+			hasError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.ParseServicePorts(ctx, tt.service)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("ParseServicePorts() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ParseServicePorts() unexpected error: %v", err)
+				return
+			}
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("ParseServicePorts() returned %d ports, want %d", len(result), len(tt.expected))
+				return
+			}
+
+			for i, expected := range tt.expected {
+				if result[i].Host != expected.Host {
+					t.Errorf("Port[%d] Host = %d, want %d", i, result[i].Host, expected.Host)
+				}
+				if result[i].Container != expected.Container {
+					t.Errorf("Port[%d] Container = %d, want %d", i, result[i].Container, expected.Container)
+				}
+				if result[i].Protocol != expected.Protocol {
+					t.Errorf("Port[%d] Protocol = %q, want %q", i, result[i].Protocol, expected.Protocol)
+				}
+			}
+		})
+	}
+}
+
+// TestParsePortObject tests the parsePortObject method
+func TestParsePortObject(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		portObj  map[string]interface{}
+		expected *types.PortMapping
+		hasError bool
+	}{
+		{
+			name: "完全なポートオブジェクト",
+			portObj: map[string]interface{}{
+				"target":    80,
+				"published": 8080,
+				"protocol":  "tcp",
+				"host_ip":   "127.0.0.1",
+			},
+			expected: &types.PortMapping{
+				Host:      8080,
+				Container: 80,
+				Protocol:  "tcp",
+				HostIP:    "127.0.0.1",
+			},
+			hasError: false,
+		},
+		{
+			name: "最小限のポートオブジェクト",
+			portObj: map[string]interface{}{
+				"target": 80,
+			},
+			expected: &types.PortMapping{
+				Host:      0,
+				Container: 80,
+				Protocol:  "tcp",
+			},
+			hasError: false,
+		},
+		{
+			name: "文字列形式のポート番号",
+			portObj: map[string]interface{}{
+				"target":    "80",
+				"published": "8080",
+			},
+			expected: &types.PortMapping{
+				Host:      8080,
+				Container: 80,
+				Protocol:  "tcp",
+			},
+			hasError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parsePortObject(ctx, tt.portObj)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("parsePortObject() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("parsePortObject() unexpected error: %v", err)
+				return
+			}
+
+			if result.Host != tt.expected.Host {
+				t.Errorf("Host = %d, want %d", result.Host, tt.expected.Host)
+			}
+			if result.Container != tt.expected.Container {
+				t.Errorf("Container = %d, want %d", result.Container, tt.expected.Container)
+			}
+			if result.Protocol != tt.expected.Protocol {
+				t.Errorf("Protocol = %q, want %q", result.Protocol, tt.expected.Protocol)
+			}
+			if result.HostIP != tt.expected.HostIP {
+				t.Errorf("HostIP = %q, want %q", result.HostIP, tt.expected.HostIP)
+			}
+		})
+	}
+}
+
+// TestParseEnvironment tests the parseEnvironment method
+func TestParseEnvironment(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+
+	tests := []struct {
+		name     string
+		env      interface{}
+		expected map[string]string
+	}{
+		{
+			name: "配列形式 - キー=値",
+			env: []interface{}{
+				"NODE_ENV=production",
+				"DEBUG=true",
+			},
+			expected: map[string]string{
+				"NODE_ENV": "production",
+				"DEBUG":    "true",
+			},
+		},
+		{
+			name: "配列形式 - キーのみ",
+			env: []interface{}{
+				"API_KEY",
+				"SECRET",
+			},
+			expected: map[string]string{
+				"API_KEY": "",
+				"SECRET":  "",
+			},
+		},
+		{
+			name: "マップ形式",
+			env: map[string]interface{}{
+				"NODE_ENV": "development",
+				"PORT":     4000,
+				"DEBUG":    "false",
+			},
+			expected: map[string]string{
+				"NODE_ENV": "development",
+				"PORT":     "4000",
+				"DEBUG":    "false",
+			},
+		},
+		{
+			name:     "nil",
+			env:      nil,
+			expected: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.parseEnvironment(tt.env)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("parseEnvironment() returned %d entries, want %d", len(result), len(tt.expected))
+			}
+
+			for key, expectedValue := range tt.expected {
+				if value, exists := result[key]; !exists {
+					t.Errorf("parseEnvironment() missing key %q", key)
+				} else if value != expectedValue {
+					t.Errorf("parseEnvironment()[%q] = %q, want %q", key, value, expectedValue)
+				}
+			}
+		})
+	}
+}
+
+// TestParseDependsOn tests the parseDependsOn method
+func TestParseDependsOn(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+
+	tests := []struct {
+		name     string
+		depends  interface{}
+		expected []string
+	}{
+		{
+			name: "配列形式",
+			depends: []interface{}{
+				"db",
+				"cache",
+				"queue",
+			},
+			expected: []string{"db", "cache", "queue"},
+		},
+		{
+			name: "マップ形式",
+			depends: map[string]interface{}{
+				"db": map[string]interface{}{
+					"condition": "service_healthy",
+				},
+				"cache": map[string]interface{}{
+					"condition": "service_started",
+				},
+			},
+			expected: []string{"db", "cache"},
+		},
+		{
+			name:     "nil",
+			depends:  nil,
+			expected: []string(nil),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.parseDependsOn(tt.depends)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("parseDependsOn() returned %d items, want %d", len(result), len(tt.expected))
+				return
+			}
+
+			// マップの順序は保証されないため、containsチェック
+			for _, expected := range tt.expected {
+				found := false
+				for _, item := range result {
+					if item == expected {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("parseDependsOn() missing expected item %q", expected)
+				}
+			}
+		})
+	}
+}
+
+// TestParseNetworks tests the parseNetworks method
+func TestParseNetworks(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+
+	tests := []struct {
+		name     string
+		networks interface{}
+		expected map[string]types.ServiceNetwork
+	}{
+		{
+			name: "配列形式 - ネットワーク名のみ",
+			networks: []interface{}{
+				"backend",
+				"frontend",
+			},
+			expected: map[string]types.ServiceNetwork{
+				"backend":  {},
+				"frontend": {},
+			},
+		},
+		{
+			name: "マップ形式 - IPv4アドレス指定",
+			networks: map[string]interface{}{
+				"backend": map[string]interface{}{
+					"ipv4_address": "172.28.0.5",
+				},
+			},
+			expected: map[string]types.ServiceNetwork{
+				"backend": {IPv4Address: "172.28.0.5"},
+			},
+		},
+		{
+			name: "マップ形式 - 空の設定",
+			networks: map[string]interface{}{
+				"backend": map[string]interface{}{},
+			},
+			expected: map[string]types.ServiceNetwork{
+				"backend": {},
+			},
+		},
+		{
+			name:     "nil",
+			networks: nil,
+			expected: map[string]types.ServiceNetwork{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.parseNetworks(tt.networks)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("parseNetworks() returned %d networks, want %d", len(result), len(tt.expected))
+				return
+			}
+
+			for name, expected := range tt.expected {
+				network, exists := result[name]
+				if !exists {
+					t.Errorf("parseNetworks() missing network %q", name)
+					continue
+				}
+				if network.IPv4Address != expected.IPv4Address {
+					t.Errorf("Network[%q] IPv4Address = %q, want %q", name, network.IPv4Address, expected.IPv4Address)
+				}
+			}
+		})
+	}
+}
+
+// TestConvertToNetwork tests the convertToNetwork method
+func TestConvertToNetwork(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		networkName string
+		networkMap  map[string]interface{}
+		expected    types.Network
+		hasError    bool
+	}{
+		{
+			name:        "空のネットワーク定義",
+			networkName: "backend",
+			networkMap:  map[string]interface{}{},
+			expected: types.Network{
+				Driver: "bridge",
+				IPAM: types.IPAM{
+					Driver: "default",
+					Config: []types.IPAMConfig{},
+				},
+				Labels: map[string]string{},
+			},
+			hasError: false,
+		},
+		{
+			name:        "ipamが未定義のネットワーク",
+			networkName: "frontend",
+			networkMap: map[string]interface{}{
+				"driver": "bridge",
+			},
+			expected: types.Network{
+				Driver: "bridge",
+				IPAM: types.IPAM{
+					Driver: "default",
+					Config: []types.IPAMConfig{},
+				},
+				Labels: map[string]string{},
+			},
+			hasError: false,
+		},
+		{
+			name:        "subnetが複数あるケース",
+			networkName: "multi-subnet",
+			networkMap: map[string]interface{}{
+				"driver": "bridge",
+				"ipam": map[string]interface{}{
+					"driver": "default",
+					"config": []interface{}{
+						map[string]interface{}{
+							"subnet":  "172.28.0.0/16",
+							"gateway": "172.28.0.1",
+						},
+						map[string]interface{}{
+							"subnet":  "172.29.0.0/16",
+							"gateway": "172.29.0.1",
+						},
+					},
+				},
+			},
+			expected: types.Network{
+				Driver: "bridge",
+				IPAM: types.IPAM{
+					Driver: "default",
+					Config: []types.IPAMConfig{
+						{Subnet: "172.28.0.0/16", Gateway: "172.28.0.1"},
+						{Subnet: "172.29.0.0/16", Gateway: "172.29.0.1"},
+					},
+				},
+				Labels: map[string]string{},
+			},
+			hasError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.convertToNetwork(ctx, tt.networkName, tt.networkMap)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("convertToNetwork() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("convertToNetwork() unexpected error: %v", err)
+				return
+			}
+
+			if result.Driver != tt.expected.Driver {
+				t.Errorf("Driver = %q, want %q", result.Driver, tt.expected.Driver)
+			}
+
+			if result.IPAM.Driver != tt.expected.IPAM.Driver {
+				t.Errorf("IPAM.Driver = %q, want %q", result.IPAM.Driver, tt.expected.IPAM.Driver)
+			}
+
+			if len(result.IPAM.Config) != len(tt.expected.IPAM.Config) {
+				t.Errorf("IPAM.Config has %d entries, want %d", len(result.IPAM.Config), len(tt.expected.IPAM.Config))
+			}
+
+			for i, expectedConfig := range tt.expected.IPAM.Config {
+				if i >= len(result.IPAM.Config) {
+					break
+				}
+				if result.IPAM.Config[i].Subnet != expectedConfig.Subnet {
+					t.Errorf("IPAM.Config[%d].Subnet = %q, want %q", i, result.IPAM.Config[i].Subnet, expectedConfig.Subnet)
+				}
+				if result.IPAM.Config[i].Gateway != expectedConfig.Gateway {
+					t.Errorf("IPAM.Config[%d].Gateway = %q, want %q", i, result.IPAM.Config[i].Gateway, expectedConfig.Gateway)
+				}
+			}
+		})
+	}
+}
+
+// TestParseComposeFileWithEdgeCases tests parsing edge case YAML files
+func TestParseComposeFileWithEdgeCases(t *testing.T) {
+	factory := logger.NewStructuredLoggerFactory(false)
+	testLogger, _ := factory.Create(types.LogConfig{})
+	parser := NewYamlComposeParser(testLogger)
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		filepath string
+		hasError bool
+		checkFn  func(*testing.T, *types.ComposeConfig)
+	}{
+		{
+			name:     "エッジケースファイル",
+			filepath: "../../testdata/parser/edge_cases.yml",
+			hasError: false,
+			checkFn: func(t *testing.T, config *types.ComposeConfig) {
+				if config == nil {
+					t.Fatal("config is nil")
+				}
+
+				// サービス数チェック
+				expectedServices := 9
+				if len(config.Services) != expectedServices {
+					t.Errorf("Services count = %d, want %d", len(config.Services), expectedServices)
+				}
+
+				// multi-portsサービスのポート数チェック
+				if service, exists := config.Services["multi-ports"]; exists {
+					if len(service.Ports) != 3 {
+						t.Errorf("multi-ports has %d ports, want 3", len(service.Ports))
+					}
+				} else {
+					t.Error("multi-ports service not found")
+				}
+
+				// ネットワーク数チェック
+				expectedNetworks := 3
+				if len(config.Networks) != expectedNetworks {
+					t.Errorf("Networks count = %d, want %d", len(config.Networks), expectedNetworks)
+				}
+
+				// multi-subnetネットワークのIPAM configチェック
+				if network, exists := config.Networks["multi-subnet"]; exists {
+					if len(network.IPAM.Config) != 2 {
+						t.Errorf("multi-subnet has %d IPAM configs, want 2", len(network.IPAM.Config))
+					}
+				} else {
+					t.Error("multi-subnet network not found")
+				}
+			},
+		},
+		{
+			name:     "存在しないファイル",
+			filepath: "testdata/parser/nonexistent.yml",
+			hasError: true,
+			checkFn:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.ParseComposeFile(ctx, tt.filepath)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("ParseComposeFile(%q) expected error, got nil", tt.filepath)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ParseComposeFile(%q) unexpected error: %v", tt.filepath, err)
+				return
+			}
+
+			if tt.checkFn != nil {
+				tt.checkFn(t, result)
 			}
 		})
 	}
