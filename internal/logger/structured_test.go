@@ -27,7 +27,7 @@ func TestNewStructuredLoggerFactory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			factory := NewStructuredLoggerFactory(tt.detailed)
 			if factory == nil {
-				t.Error("NewStructuredLoggerFactory() returned nil")
+				t.Fatal("NewStructuredLoggerFactory() returned nil")
 			}
 			if factory.detailed != tt.detailed {
 				t.Errorf("NewStructuredLoggerFactory() detailed = %v, want %v", factory.detailed, tt.detailed)

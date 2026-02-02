@@ -172,7 +172,7 @@ func TestAppErrorWithField(t *testing.T) {
 	}
 
 	// Add another field
-	result.WithField("type", "yaml")
+	result = result.WithField("type", "yaml")
 
 	if len(result.Fields) != 2 {
 		t.Errorf("AppError.WithField() field count = %v, want 2", len(result.Fields))
