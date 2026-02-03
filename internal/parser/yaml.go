@@ -303,40 +303,21 @@ func expandVariables(input string) string {
 	return expanded
 }
 
-// parsePortString は文字列形式のポートマッピングを解析します。
-func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string) (*types.PortMapping, error) {
-	// 例: "8080:80", "8080:80/tcp", "127.0.0.1:8080:80", "${PORT:-3000}:80"
+// portStringPattern はポート文字列の正規表現パターンです。
+// 形式: [host_ip:]host_port:container_port または container_port のみ
+var portStringPattern = regexp.MustCompile(`^(?:([\d\.]+):)?(\d+):(\d+)$|^(\d+)$`)
 
-	// 環境変数を展開
-	expandedPortStr := expandVariables(portStr)
-
-	protocol := "tcp"
-	portPart := expandedPortStr
-
-	// プロトコル部分を分離
-	if strings.Contains(expandedPortStr, "/") {
-		parts := strings.Split(expandedPortStr, "/")
-		if len(parts) == 2 {
-			portPart = parts[0]
-			protocol = parts[1]
-		}
+// extractProtocol はポート文字列からプロトコル部分を分離します。
+func extractProtocol(portStr string) (portPart, protocol string) {
+	if idx := strings.Index(portStr, "/"); idx >= 0 {
+		return portStr[:idx], portStr[idx+1:]
 	}
+	return portStr, "tcp"
+}
 
-	// ポート部分を解析
-	// 形式: [host_ip:]host_port:container_port または container_port のみ
-	// IPアドレスは数字とドットで構成される (例: 127.0.0.1:8080:80)
-	// Note: ホスト名 (例: localhost:8080:80) は Docker Compose の短縮構文では
-	// サポートされていないため、[\d\.]+ で IP アドレスのみにマッチさせる。
-	re := regexp.MustCompile(`^(?:([\d\.]+):)?(\d+):(\d+)$|^(\d+)$`)
-	matches := re.FindStringSubmatch(portPart)
-
-	if len(matches) == 0 {
-		return nil, &errors.AppError{
-			Code:    errors.ErrParseFailed,
-			Message: fmt.Sprintf("無効なポート形式: %s (展開後: %s)", portStr, expandedPortStr),
-		}
-	}
-
+// buildPortMappingFromRegexMatches は正規表現マッチ結果から PortMapping を構築します。
+// matches は portStringPattern.FindStringSubmatch の結果: [full, hostIP, hostPort, containerPort, singlePort]
+func buildPortMappingFromRegexMatches(matches []string, protocol string) (*types.PortMapping, error) {
 	var hostPort, containerPort int
 	var err error
 
@@ -350,7 +331,6 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 				Cause:   err,
 			}
 		}
-		hostPort = 0 // ホストポートは指定なし
 	} else {
 		// ホスト:コンテナ形式（例: "8080:80"）
 		hostPort, err = strconv.Atoi(matches[2])
@@ -361,7 +341,6 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 				Cause:   err,
 			}
 		}
-
 		containerPort, err = strconv.Atoi(matches[3])
 		if err != nil {
 			return nil, &errors.AppError{
@@ -378,12 +357,27 @@ func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string)
 		Protocol:  protocol,
 	}
 
-	// IPアドレスが指定されている場合
 	if matches[1] != "" {
 		mapping.HostIP = matches[1]
 	}
 
 	return mapping, nil
+}
+
+// parsePortString は文字列形式のポートマッピングを解析します。
+func (p *YamlComposeParser) parsePortString(ctx context.Context, portStr string) (*types.PortMapping, error) {
+	expanded := expandVariables(portStr)
+	portPart, protocol := extractProtocol(expanded)
+
+	matches := portStringPattern.FindStringSubmatch(portPart)
+	if len(matches) == 0 {
+		return nil, &errors.AppError{
+			Code:    errors.ErrParseFailed,
+			Message: fmt.Sprintf("無効なポート形式: %s (展開後: %s)", portStr, expanded),
+		}
+	}
+
+	return buildPortMappingFromRegexMatches(matches, protocol)
 }
 
 // parsePortObject はオブジェクト形式のポートマッピングを解析します。
