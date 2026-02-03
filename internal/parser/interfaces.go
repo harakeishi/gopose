@@ -8,6 +8,11 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
+// ComposeFileDetector はComposeファイルの自動検出を行うインターフェースです。
+type ComposeFileDetector interface {
+	GetDefaultComposeFile(ctx context.Context, directory string) (string, error)
+}
+
 // ComposeParser はDocker Composeファイル解析を行うインターフェースです。
 type ComposeParser interface {
 	Parse(ctx context.Context, filePath string) (*types.ComposeConfig, error)

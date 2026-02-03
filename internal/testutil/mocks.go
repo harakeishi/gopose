@@ -52,6 +52,77 @@ func (m *MockPortDetector) IsPortInUse(ctx context.Context, port int) (bool, err
 	return false, nil
 }
 
+// MockComposeFileDetector はComposeファイル検出のモックです。
+type MockComposeFileDetector struct {
+	DefaultFile string
+	Err         error
+}
+
+func (m *MockComposeFileDetector) GetDefaultComposeFile(ctx context.Context, directory string) (string, error) {
+	return m.DefaultFile, m.Err
+}
+
+// MockComposeFileParser はComposeファイル解析のモックです。
+type MockComposeFileParser struct {
+	Config *types.ComposeConfig
+	Err    error
+}
+
+func (m *MockComposeFileParser) ParseComposeFile(ctx context.Context, filePath string) (*types.ComposeConfig, error) {
+	return m.Config, m.Err
+}
+
+// MockUnifiedConflictDetector は統一衝突検知のモックです。
+type MockUnifiedConflictDetector struct {
+	ConflictInfo     *types.UnifiedConflictInfo
+	Err              error
+	PortConflicts    []types.PortConflictInfo
+	PortErr          error
+	NetworkConflicts []types.NetworkConflictInfo
+	NetworkErr       error
+}
+
+func (m *MockUnifiedConflictDetector) DetectConflicts(ctx context.Context, config *types.ComposeConfig, projectName string) (*types.UnifiedConflictInfo, error) {
+	return m.ConflictInfo, m.Err
+}
+
+func (m *MockUnifiedConflictDetector) DetectPortConflicts(ctx context.Context, config *types.ComposeConfig) ([]types.PortConflictInfo, error) {
+	return m.PortConflicts, m.PortErr
+}
+
+func (m *MockUnifiedConflictDetector) DetectNetworkConflicts(ctx context.Context, config *types.ComposeConfig, projectName string) ([]types.NetworkConflictInfo, error) {
+	return m.NetworkConflicts, m.NetworkErr
+}
+
+// MockUnifiedOverrideGenerator は統一Override生成のモックです。
+type MockUnifiedOverrideGenerator struct {
+	ResolveErr  error
+	Override    *types.OverrideConfig
+	GenerateErr error
+}
+
+func (m *MockUnifiedOverrideGenerator) GenerateFromConflicts(ctx context.Context, config *types.ComposeConfig, conflictInfo *types.UnifiedConflictInfo) (*types.OverrideConfig, error) {
+	return m.Override, m.GenerateErr
+}
+
+func (m *MockUnifiedOverrideGenerator) ResolveConflicts(ctx context.Context, conflictInfo *types.UnifiedConflictInfo, strategy types.ResolutionStrategy, portConfig types.PortConfig) error {
+	return m.ResolveErr
+}
+
+// MockOverrideWriter はOverride検証・書き込みのモックです。
+type MockOverrideWriter struct {
+	ValidateErr error
+	WriteErr    error
+}
+
+func (m *MockOverrideWriter) ValidateOverride(ctx context.Context, override *types.OverrideConfig) error {
+	return m.ValidateErr
+}
+
+func (m *MockOverrideWriter) WriteOverrideFile(ctx context.Context, override *types.OverrideConfig, outputPath string) error {
+	return m.WriteErr
+}
+
 // MockPortAllocator is a mock port allocator for testing.
 type MockPortAllocator struct {
 	NextPort int
