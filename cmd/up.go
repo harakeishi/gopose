@@ -11,6 +11,7 @@ import (
 	"github.com/harakeishi/gopose/internal/generator"
 	"github.com/harakeishi/gopose/internal/parser"
 	"github.com/harakeishi/gopose/internal/scanner"
+	"github.com/harakeishi/gopose/internal/service"
 	"github.com/harakeishi/gopose/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -140,7 +141,7 @@ var upCmd = &cobra.Command{
 		ctx := cmd.Context()
 		cfg := getConfig()
 
-		logger, err := getLogger(cfg)
+		log, err := getLogger(cfg)
 		if err != nil {
 			return fmt.Errorf("ロガーの初期化に失敗しました: %w", err)
 		}
@@ -155,12 +156,24 @@ var upCmd = &cobra.Command{
 		if composeProjectName == "" && os.Getenv("COMPOSE_PROJECT_NAME") == "" {
 			if pn, err := detectWorktreeProjectName(); err == nil && pn != "" {
 				composeProjectName = pn
-				logger.Info(ctx, "ワークツリー名をプロジェクト名として使用",
+				log.Info(ctx, "ワークツリー名をプロジェクト名として使用",
 					types.Field{Key: "project_name", Value: composeProjectName})
 			}
 		}
 
-		logger.Info(ctx, "ポート衝突解決を開始",
+		// Composeファイルパスの決定（デフォルト値"compose.yml"の場合は自動検出に委ねる）
+		composeFilePath := filePath
+		if composeFilePath == "compose.yml" {
+			composeFilePath = ""
+		}
+
+		// 作業ディレクトリの取得
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
+		}
+
+		log.Info(ctx, "ポート衝突解決を開始",
 			types.Field{Key: "dry_run", Value: dryRun},
 			types.Field{Key: "compose_file", Value: filePath},
 			types.Field{Key: "output_file", Value: outputFile},
@@ -169,137 +182,41 @@ var upCmd = &cobra.Command{
 			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)},
 			types.Field{Key: "reserved_ports", Value: portConfig.Reserved})
 
-		// Docker Composeファイルの自動検出（指定されていない場合）
-		if filePath == "" || filePath == "compose.yml" {
-      wd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("作業ディレクトリの取得に失敗: %w", err)
-			}
+		// 依存関係の構築
+		portDetector := scanner.NewNetstatPortDetector(log)
+		portAllocator := scanner.NewPortAllocatorImpl(portDetector, log)
+		networkDetector := scanner.NewDockerNetworkDetector(log)
 
-			detector := parser.NewComposeFileDetectorImpl(logger)
-			detectedFile, err := detector.GetDefaultComposeFile(ctx, wd)
-			if err != nil {
-				return fmt.Errorf("docker composeファイルの自動検出に失敗: %w", err)
-			}
-			filePath = detectedFile
-			logger.Info(ctx, "Docker Composeファイルを自動検出", types.Field{Key: "file", Value: filePath})
+		deps := service.UpServiceDeps{
+			Logger:              log,
+			ComposeFileDetector: parser.NewComposeFileDetectorImpl(log),
+			ComposeParser:       parser.NewYamlComposeParser(log),
+			ConflictDetector:    scanner.NewUnifiedConflictDetectorImpl(portDetector, networkDetector, log),
+			OverrideGenerator:   generator.NewUnifiedOverrideGeneratorImpl(portAllocator, log),
+			OverrideWriter:      generator.NewOverrideGeneratorImpl(log),
 		}
 
-		// Docker Composeファイルの解析
-		yamlParser := parser.NewYamlComposeParser(logger)
-		config, err := yamlParser.ParseComposeFile(ctx, filePath)
+		svc := service.NewUpService(deps)
+		result, err := svc.Execute(ctx, service.UpParams{
+			ComposeFilePath: composeFilePath,
+			WorkDir:         wd,
+			OutputFile:      outputFile,
+			ProjectName:     composeProjectName,
+			Strategy:        strategy,
+			PortConfig:      portConfig,
+			DryRun:          dryRun,
+		})
 		if err != nil {
-			return fmt.Errorf("docker composeファイルの解析に失敗: %w", err)
+			return err
 		}
 
-		// 統一的な衝突検知の実行
-		portDetector := scanner.NewNetstatPortDetector(logger)
-		portAllocator := scanner.NewPortAllocatorImpl(portDetector, logger)
-		networkDetector := scanner.NewDockerNetworkDetector(logger)
-		unifiedDetector := scanner.NewUnifiedConflictDetectorImpl(portDetector, networkDetector, logger)
-
-		conflictInfo, err := unifiedDetector.DetectConflicts(ctx, config, composeProjectName)
-		if err != nil {
-			return fmt.Errorf("衝突検知に失敗: %w", err)
-		}
-
-		// 衝突がない場合
-		if !conflictInfo.HasConflicts() {
-			logger.Info(ctx, "衝突は検出されませんでした")
-			if skipComposeUp {
-				logger.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
-			}
-			return nil
-		}
-
-		// 衝突結果の表示
-		logger.Info(ctx, "衝突検知完了",
-			types.Field{Key: "port_conflicts", Value: len(conflictInfo.PortConflicts)},
-			types.Field{Key: "network_conflicts", Value: len(conflictInfo.NetworkConflicts)})
-
-		// 解決戦略の決定
-		resolutionStrategy := types.ResolutionStrategyAutoIncrement
-		switch strategy {
-		case "auto":
-			resolutionStrategy = types.ResolutionStrategyAutoIncrement
-		case "range":
-			resolutionStrategy = types.ResolutionStrategyRangeAllocation
-		case "user":
-			resolutionStrategy = types.ResolutionStrategyUserDefined
-		}
-
-		// 統一的な衝突解決
-		unifiedGenerator := generator.NewUnifiedOverrideGeneratorImpl(portAllocator, logger)
-		if err := unifiedGenerator.ResolveConflicts(ctx, conflictInfo, resolutionStrategy, portConfig); err != nil {
-			return fmt.Errorf("衝突解決に失敗: %w", err)
-		}
-
-		// 解決結果の表示
-		for _, conflict := range conflictInfo.PortConflicts {
-			if conflict.Resolution != nil {
-				logger.Info(ctx, "ポート解決",
-					types.Field{Key: "service", Value: conflict.ServiceName},
-					types.Field{Key: "from", Value: conflict.Port},
-					types.Field{Key: "to", Value: conflict.Resolution.ResolvedPort},
-					types.Field{Key: "reason", Value: conflict.Resolution.Reason})
-			}
-		}
-
-		for _, conflict := range conflictInfo.NetworkConflicts {
-			if conflict.Resolution != nil {
-				logger.Info(ctx, "ネットワーク解決",
-					types.Field{Key: "network", Value: conflict.NetworkName},
-					types.Field{Key: "from", Value: conflict.OriginalSubnet},
-					types.Field{Key: "to", Value: conflict.Resolution.ResolvedSubnet},
-					types.Field{Key: "reason", Value: conflict.Resolution.Reason})
-			}
-		}
-
-		// 統一的なOverride.ymlの生成
-		override, err := unifiedGenerator.GenerateFromConflicts(ctx, config, conflictInfo)
-		if err != nil {
-			return fmt.Errorf("overrideファイルの生成に失敗: %w", err)
-		}
-
-		// プロジェクト名をoverrideに設定（Docker Composeコマンドの統一のため）
-		if composeProjectName != "" {
-			override.Name = composeProjectName
-			logger.Debug(ctx, "Override.ymlにプロジェクト名を設定",
-				types.Field{Key: "project_name", Value: composeProjectName})
-		}
-
-		// Override.ymlの妥当性検証
-		overrideGenerator := generator.NewOverrideGeneratorImpl(logger)
-		if err := overrideGenerator.ValidateOverride(ctx, override); err != nil {
-			return fmt.Errorf("overrideファイルの検証に失敗: %w", err)
-		}
-
-		// 出力ファイル名の決定
-		if outputFile == "" {
-			outputFile = "compose.override.yml"
-		}
-
-		// ドライランモードでない場合のみファイル書き込み
-		if !dryRun {
-			// Override.ymlファイルの書き込み
-			if err := overrideGenerator.WriteOverrideFile(ctx, override, outputFile); err != nil {
-				return fmt.Errorf("overrideファイルの書き込みに失敗: %w", err)
-			}
-
-			logger.Info(ctx, "Override.ymlファイルが生成されました",
-				types.Field{Key: "output_file", Value: outputFile})
-		} else {
-			logger.Info(ctx, "ドライランモードのため、ファイルは生成されません")
-		}
-
-		// Docker Composeの実行（--skip-compose-upが指定された場合は後方互換のための警告を表示）
+		// 後方互換の警告表示
 		if skipComposeUp {
-			logger.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
+			log.Warn(ctx, "--skip-compose-upオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 		}
 
-		// デフォルトではDocker Composeを実行しない
-		if !dryRun {
-			logger.Info(ctx, "override.ymlの生成が完了しました。docker compose upを実行する場合は、手動で実行してください。")
+		if result.HasConflicts && !dryRun {
+			log.Info(ctx, "override.ymlの生成が完了しました。docker compose upを実行する場合は、手動で実行してください。")
 		}
 
 		return nil
