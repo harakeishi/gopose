@@ -7,6 +7,12 @@ import (
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
+// OverrideWriter はOverride.ymlの検証と書き込みを行うインターフェースです。
+type OverrideWriter interface {
+	ValidateOverride(ctx context.Context, override *types.OverrideConfig) error
+	WriteOverrideFile(ctx context.Context, override *types.OverrideConfig, outputPath string) error
+}
+
 // UnifiedOverrideGenerator は統一的な衝突情報からoverride生成を行うインターフェースです。
 type UnifiedOverrideGenerator interface {
 	GenerateFromConflicts(ctx context.Context, config *types.ComposeConfig, conflictInfo *types.UnifiedConflictInfo) (*types.OverrideConfig, error)
