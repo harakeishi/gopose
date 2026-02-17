@@ -470,6 +470,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/t-daisuke"><img src="https://avatars.githubusercontent.com/u/50610194?v=4?s=100" width="100px;" alt="doskoi"/><br /><sub><b>doskoi</b></sub></a><br /><a href="https://github.com/harakeishi/gopose/commits?author=t-daisuke" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/litencatt"><img src="https://avatars.githubusercontent.com/u/17349045?v=4?s=100" width="100px;" alt="Kosuke Nakamura"/><br /><sub><b>Kosuke Nakamura</b></sub></a><br /><a href="https://github.com/harakeishi/gopose/commits?author=litencatt" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://akinoriakatsuka.com"><img src="https://avatars.githubusercontent.com/u/77688294?v=4?s=100" width="100px;" alt="Akinori Takigawa"/><br /><sub><b>Akinori Takigawa</b></sub></a><br /><a href="https://github.com/harakeishi/gopose/commits?author=akinoriakatsuka" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
