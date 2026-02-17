@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/harakeishi/gopose/internal/testutil"
@@ -322,5 +323,143 @@ func TestReservedPorts_UnusedPortsAreStillReserved(t *testing.T) {
 	expectedFirstPort := 9003
 	if ports[0] != expectedFirstPort {
 		t.Errorf("AllocatePorts()[0] = %d, want %d (first non-reserved port)", ports[0], expectedFirstPort)
+	}
+}
+
+// --- Edge case tests ---
+
+func TestAllocatePort_NoAvailablePorts(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	// All ports in the range are used
+	mockDetector := &mockPortDetector{usedPorts: []int{5000, 5001, 5002}}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 5000, End: 5002},
+		ExcludePrivileged: false,
+	}
+
+	_, err := allocator.AllocatePort(ctx, config)
+	if err == nil {
+		t.Error("AllocatePort() expected error when all ports are used, got nil")
+	}
+}
+
+func TestAllocatePort_ExcludePrivileged(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	// Range includes privileged ports (80-1100), ExcludePrivileged=true
+	mockDetector := &mockPortDetector{usedPorts: []int{}}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 80, End: 1100},
+		ExcludePrivileged: true,
+	}
+
+	port, err := allocator.AllocatePort(ctx, config)
+	if err != nil {
+		t.Fatalf("AllocatePort() error = %v, want nil", err)
+	}
+
+	if port <= 1023 {
+		t.Errorf("AllocatePort() = %d, want > 1023 when ExcludePrivileged is true", port)
+	}
+}
+
+func TestAllocatePorts_ZeroCount(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	mockDetector := &mockPortDetector{usedPorts: []int{}}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 8000, End: 8100},
+		ExcludePrivileged: false,
+	}
+
+	ports, err := allocator.AllocatePorts(ctx, 0, config)
+	if err != nil {
+		t.Errorf("AllocatePorts() error = %v, want nil", err)
+	}
+
+	if len(ports) != 0 {
+		t.Errorf("AllocatePorts() returned %d ports, want 0", len(ports))
+	}
+}
+
+func TestAllocatePorts_InsufficientPorts(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	// Range has 3 ports (6000-6002), but 2 are used, leaving only 1 available
+	mockDetector := &mockPortDetector{usedPorts: []int{6000, 6001}}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 6000, End: 6002},
+		ExcludePrivileged: false,
+	}
+
+	_, err := allocator.AllocatePorts(ctx, 3, config)
+	if err == nil {
+		t.Error("AllocatePorts() expected error when insufficient ports available, got nil")
+	}
+}
+
+func TestAllocatePortsForServices_NoPortServices(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	mockDetector := &mockPortDetector{usedPorts: []int{}}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 8000, End: 8100},
+		ExcludePrivileged: false,
+	}
+
+	// Service with empty Ports slice
+	services := []types.Service{
+		{Name: "worker", Ports: []types.PortMapping{}},
+	}
+
+	result, err := allocator.AllocatePortsForServices(ctx, services, config)
+	if err != nil {
+		t.Errorf("AllocatePortsForServices() error = %v, want nil", err)
+	}
+
+	if len(result) != 0 {
+		t.Errorf("AllocatePortsForServices() returned %d entries, want 0", len(result))
+	}
+}
+
+func TestAllocatePortsForServices_DetectorError(t *testing.T) {
+	testLogger := testutil.NewTestLogger()
+	ctx := context.Background()
+
+	// Use testutil.MockPortDetector which supports Err field
+	mockDetector := &testutil.MockPortDetector{
+		UsedPorts: []int{},
+		Err:       fmt.Errorf("detector failure"),
+	}
+	allocator := NewPortAllocatorImpl(mockDetector, testLogger)
+
+	config := types.PortConfig{
+		Range:             types.PortRange{Start: 8000, End: 8100},
+		ExcludePrivileged: false,
+	}
+
+	services := []types.Service{
+		{Name: "web", Ports: []types.PortMapping{{Host: 80, Container: 80}}},
+	}
+
+	_, err := allocator.AllocatePortsForServices(ctx, services, config)
+	if err == nil {
+		t.Error("AllocatePortsForServices() expected error when detector fails, got nil")
 	}
 }

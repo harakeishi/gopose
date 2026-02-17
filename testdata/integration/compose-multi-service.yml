@@ -1,0 +1,19 @@
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+  api:
+    image: node:alpine
+    ports:
+      - "3000:3000"
+  db:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
