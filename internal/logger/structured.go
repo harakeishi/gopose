@@ -18,6 +18,7 @@ type StructuredLogger struct {
 	fields   []types.Field
 	err      error
 	detailed bool
+	level    slog.Level
 }
 
 // StructuredLoggerFactory は構造化ログのファクトリです。
@@ -70,6 +71,7 @@ func (f *StructuredLoggerFactory) CreateWithName(name string, config types.LogCo
 		logger:   logger,
 		fields:   []types.Field{},
 		detailed: f.detailed,
+		level:    level,
 	}, nil
 }
 
@@ -124,9 +126,11 @@ func (l *StructuredLogger) WithField(key string, value interface{}) Logger {
 	newFields[len(l.fields)] = types.Field{Key: key, Value: value}
 
 	return &StructuredLogger{
-		logger: l.logger,
-		fields: newFields,
-		err:    l.err,
+		logger:   l.logger,
+		fields:   newFields,
+		err:      l.err,
+		detailed: l.detailed,
+		level:    l.level,
 	}
 }
 
@@ -137,25 +141,31 @@ func (l *StructuredLogger) WithFields(fields ...types.Field) Logger {
 	copy(newFields[len(l.fields):], fields)
 
 	return &StructuredLogger{
-		logger: l.logger,
-		fields: newFields,
-		err:    l.err,
+		logger:   l.logger,
+		fields:   newFields,
+		err:      l.err,
+		detailed: l.detailed,
+		level:    l.level,
 	}
 }
 
 // WithError はエラーを追加した新しいロガーを返します。
 func (l *StructuredLogger) WithError(err error) Logger {
 	return &StructuredLogger{
-		logger: l.logger,
-		fields: l.fields,
-		err:    err,
+		logger:   l.logger,
+		fields:   l.fields,
+		err:      err,
+		detailed: l.detailed,
+		level:    l.level,
 	}
 }
 
 // log は実際のログ出力を行います。
 func (l *StructuredLogger) log(ctx context.Context, level slog.Level, message string, fields ...types.Field) {
 	if !l.detailed {
-		fmt.Println(message)
+		if level >= l.level {
+			fmt.Println(message)
+		}
 		return
 	}
 
@@ -194,7 +204,7 @@ func (l *StructuredLogger) log(ctx context.Context, level slog.Level, message st
 // DefaultConfig はデフォルトのログ設定を返します。
 func DefaultConfig() types.LogConfig {
 	return types.LogConfig{
-		Level:    "info",
+		Level:    "warn",
 		Format:   "text",
 		File:     "",
 		MaxSize:  100,
