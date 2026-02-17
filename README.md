@@ -14,7 +14,7 @@
 
 When running multiple Docker Compose projects, port conflicts are inevitable. You either manually hunt for available ports or wade through cryptic error messages.
 
-**gopose** fixes this automatically. It scans for conflicts, generates a `compose.override.yml` with safe port assignments, and cleans up after itself — all without touching your original `compose.yml`.
+**gopose** fixes this automatically. It scans for conflicts and generates a `compose.override.yml` with safe port assignments — without touching your original `compose.yml`.
 
 ```
 $ gopose up
@@ -26,10 +26,8 @@ $ gopose up
   NETWORK   ORIGINAL         RESOLVED
   default   172.20.0.0/24    10.20.0.0/24
 
-[+] Running 3/3
- ✔ Network myapp_default  Created
- ✔ Container myapp-web-1  Started
- ✔ Container myapp-api-1  Started
+Override file generated: compose.override.yml
+Run `docker compose up` to start services.
 ```
 
 ## Quick Start
@@ -41,7 +39,7 @@ cd your-compose-project/
 gopose up
 ```
 
-That's it. gopose detects conflicts, resolves them, and starts your services.
+That's it. gopose detects conflicts, generates the override, and you run `docker compose up` as usual.
 
 ## Installation
 
@@ -84,9 +82,8 @@ sudo make install
 
 | Command | Description |
 |---------|-------------|
-| `gopose up` | Detect conflicts, generate override, and start services |
-| `gopose up --dry-run` | Preview changes without applying |
-| `gopose clean` | Remove generated override files |
+| `gopose up` | Detect conflicts and generate `compose.override.yml` |
+| `gopose up --dry-run` | Preview changes without generating files |
 | `gopose status` | Show current conflict status |
 | `gopose version` | Print version |
 
@@ -123,7 +120,6 @@ See [Configuration Reference](docs/configuration.md) for all options.
 - **Port conflict resolution** — Detects system port conflicts and assigns available ports
 - **Network conflict resolution** — Detects Docker network subnet conflicts and assigns safe alternatives ([details](docs/network-conflict.md))
 - **Reserved ports** — Exclude specific ports from allocation ([details](docs/reserved-ports.md))
-- **Auto-cleanup** — Removes `compose.override.yml` on process termination
 - **Cross-platform** — Linux, macOS, and Windows
 
 ## Documentation
