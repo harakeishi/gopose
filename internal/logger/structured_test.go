@@ -187,8 +187,8 @@ func TestStructuredLoggerLogging(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
-	if config.Level != "info" {
-		t.Errorf("DefaultConfig().Level = %v, want info", config.Level)
+	if config.Level != "warn" {
+		t.Errorf("DefaultConfig().Level = %v, want warn", config.Level)
 	}
 	if config.Format != "text" {
 		t.Errorf("DefaultConfig().Format = %v, want text", config.Format)

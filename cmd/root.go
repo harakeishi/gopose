@@ -11,6 +11,7 @@ import (
 
 	"github.com/harakeishi/gopose/internal/config"
 	"github.com/harakeishi/gopose/internal/logger"
+	"github.com/harakeishi/gopose/internal/presenter"
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
@@ -115,4 +116,9 @@ func getConfig() types.Config {
 func getLogger(cfg types.Config) (logger.Logger, error) {
 	factory := logger.NewStructuredLoggerFactory(detail)
 	return factory.Create(cfg.GetLog())
+}
+
+// getPresenter はプレゼンターを取得します。
+func getPresenter() presenter.Presenter {
+	return presenter.NewTablePresenter(os.Stdout)
 }

@@ -96,7 +96,7 @@ func (u *UnifiedConflictDetectorImpl) DetectPortConflicts(ctx context.Context, c
 				conflict.Type = types.ConflictTypeSystem
 				conflict.Description = fmt.Sprintf("ポート %d は既にシステムで使用されています", portMapping.Host)
 				conflicts = append(conflicts, conflict)
-				u.logger.Warn(ctx, "システムポート衝突検出",
+				u.logger.Info(ctx, "システムポート衝突検出",
 					types.Field{Key: "port", Value: portMapping.Host},
 					types.Field{Key: "service", Value: serviceName})
 			} else if existingService, exists := composePortsMap[portMapping.Host]; exists {
@@ -105,7 +105,7 @@ func (u *UnifiedConflictDetectorImpl) DetectPortConflicts(ctx context.Context, c
 				conflict.Description = fmt.Sprintf("ポート %d はサービス %s と %s で重複しています",
 					portMapping.Host, existingService, serviceName)
 				conflicts = append(conflicts, conflict)
-				u.logger.Warn(ctx, "Composeポート衝突検出",
+				u.logger.Info(ctx, "Composeポート衝突検出",
 					types.Field{Key: "port", Value: portMapping.Host},
 					types.Field{Key: "service1", Value: existingService},
 					types.Field{Key: "service2", Value: serviceName})
