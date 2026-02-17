@@ -1,0 +1,7 @@
+services:
+  worker:
+    image: python:3.11
+    command: python worker.py
+  scheduler:
+    image: python:3.11
+    command: python scheduler.py

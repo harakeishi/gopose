@@ -1,0 +1,25 @@
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    networks:
+      - frontend
+  api:
+    image: node:alpine
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
