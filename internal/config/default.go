@@ -30,7 +30,7 @@ func DefaultConfig() *types.AppConfig {
 			RetryInterval: 1 * time.Second,
 		},
 		Log: types.LogConfig{
-			Level:    "info",
+			Level:    "warn",
 			Format:   "text",
 			File:     "",
 			MaxSize:  100,
@@ -75,7 +75,7 @@ func DefaultWatcherConfig() types.WatcherConfig {
 // DefaultLogConfig はデフォルトのログ設定を返します。
 func DefaultLogConfig() types.LogConfig {
 	return types.LogConfig{
-		Level:    "info",
+		Level:    "warn",
 		Format:   "text",
 		File:     "",
 		MaxSize:  100,

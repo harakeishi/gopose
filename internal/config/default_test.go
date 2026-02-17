@@ -44,8 +44,8 @@ func TestDefaultConfig(t *testing.T) {
 	}
 
 	// verify log config
-	if config.Log.Level != "info" {
-		t.Errorf("Log.Level = %s, want info", config.Log.Level)
+	if config.Log.Level != "warn" {
+		t.Errorf("Log.Level = %s, want warn", config.Log.Level)
 	}
 	if config.Log.Format != "text" {
 		t.Errorf("Log.Format = %s, want text", config.Log.Format)
@@ -109,8 +109,8 @@ func TestDefaultWatcherConfig(t *testing.T) {
 func TestDefaultLogConfig(t *testing.T) {
 	config := DefaultLogConfig()
 
-	if config.Level != "info" {
-		t.Errorf("Level = %s, want info", config.Level)
+	if config.Level != "warn" {
+		t.Errorf("Level = %s, want warn", config.Level)
 	}
 	if config.Format != "text" {
 		t.Errorf("Format = %s, want text", config.Format)
