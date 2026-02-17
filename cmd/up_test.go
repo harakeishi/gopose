@@ -212,3 +212,32 @@ func TestParsePortRange(t *testing.T) {
 		})
 	}
 }
+
+func TestCreatePortConfig_PortRangeEdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		portRange   string
+		expectError bool
+	}{
+		{"three segments", "8000-8500-9000", true},
+		{"negative port string", "-1-9000", true},
+		{"port 65535 upper bound", "65000-65535", false},
+		{"single port range (start equals end)", "8000-8000", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := types.PortConfig{
+				Range:    types.PortRange{Start: 8000, End: 9000},
+				Reserved: []int{},
+			}
+			_, err := createPortConfig(tt.portRange, base)
+			if tt.expectError && err == nil {
+				t.Error("expected error")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
