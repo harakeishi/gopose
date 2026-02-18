@@ -1,8 +1,6 @@
 package config
 
 import (
-	"time"
-
 	"github.com/harakeishi/gopose/pkg/types"
 )
 
@@ -18,24 +16,12 @@ func DefaultConfig() *types.AppConfig {
 			ExcludePrivileged: true,
 		},
 		File: types.FileConfig{
-			ComposeFile:   "compose.yml",
-			OverrideFile:  "compose.override.yml",
-			BackupEnabled: true,
-			BackupDir:     ".gopose/backups",
-		},
-		Watcher: types.WatcherConfig{
-			Interval:      5 * time.Second,
-			CleanupDelay:  30 * time.Second,
-			MaxRetries:    3,
-			RetryInterval: 1 * time.Second,
+			ComposeFile:  "compose.yml",
+			OverrideFile: "compose.override.yml",
 		},
 		Log: types.LogConfig{
-			Level:    "warn",
-			Format:   "text",
-			File:     "",
-			MaxSize:  100,
-			MaxAge:   30,
-			Compress: true,
+			Level:  "warn",
+			Format: "text",
 		},
 	}
 }
@@ -55,43 +41,24 @@ func DefaultPortConfig() types.PortConfig {
 // DefaultFileConfig はデフォルトのファイル設定を返します。
 func DefaultFileConfig() types.FileConfig {
 	return types.FileConfig{
-		ComposeFile:   "compose.yml",
-		OverrideFile:  "compose.override.yml",
-		BackupEnabled: true,
-		BackupDir:     ".gopose/backups",
-	}
-}
-
-// DefaultWatcherConfig はデフォルトの監視設定を返します。
-func DefaultWatcherConfig() types.WatcherConfig {
-	return types.WatcherConfig{
-		Interval:      5 * time.Second,
-		CleanupDelay:  30 * time.Second,
-		MaxRetries:    3,
-		RetryInterval: 1 * time.Second,
+		ComposeFile:  "compose.yml",
+		OverrideFile: "compose.override.yml",
 	}
 }
 
 // DefaultLogConfig はデフォルトのログ設定を返します。
 func DefaultLogConfig() types.LogConfig {
 	return types.LogConfig{
-		Level:    "warn",
-		Format:   "text",
-		File:     "",
-		MaxSize:  100,
-		MaxAge:   30,
-		Compress: true,
+		Level:  "warn",
+		Format: "text",
 	}
 }
-
-// RecommendedConfigs は推奨設定のバリエーションを提供します。
 
 // DevelopmentConfig は開発環境向けの設定を返します。
 func DevelopmentConfig() *types.AppConfig {
 	config := DefaultConfig()
 	config.Log.Level = "debug"
 	config.Log.Format = "text"
-	config.Watcher.Interval = 2 * time.Second
 	return config
 }
 
@@ -101,8 +68,6 @@ func ProductionConfig() *types.AppConfig {
 	config.Log.Level = "warn"
 	config.Log.Format = "json"
 	config.Log.File = "/var/log/gopose/gopose.log"
-	config.Watcher.Interval = 10 * time.Second
-	config.Watcher.CleanupDelay = 60 * time.Second
 	return config
 }
 
@@ -111,8 +76,5 @@ func TestConfig() *types.AppConfig {
 	config := DefaultConfig()
 	config.Log.Level = "debug"
 	config.Log.Format = "text"
-	config.File.BackupEnabled = false
-	config.Watcher.Interval = 100 * time.Millisecond
-	config.Watcher.CleanupDelay = 1 * time.Second
 	return config
 }

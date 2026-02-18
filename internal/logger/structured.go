@@ -204,12 +204,8 @@ func (l *StructuredLogger) log(ctx context.Context, level slog.Level, message st
 // DefaultConfig はデフォルトのログ設定を返します。
 func DefaultConfig() types.LogConfig {
 	return types.LogConfig{
-		Level:    "warn",
-		Format:   "text",
-		File:     "",
-		MaxSize:  100,
-		MaxAge:   30,
-		Compress: true,
+		Level:  "warn",
+		Format: "text",
 	}
 }
 

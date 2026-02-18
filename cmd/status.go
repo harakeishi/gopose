@@ -41,9 +41,6 @@ var statusCmd = &cobra.Command{
 	Example: `  # 基本的な状態確認
   gopose status
 
-  # 詳細情報を表示（未実装）
-  gopose status --detailed
-
   # JSON形式で出力
   gopose status --output json`,
 	RunE: runStatus,

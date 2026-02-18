@@ -19,9 +19,7 @@ var (
 	filePath           string
 	portRange          string
 	dryRun             bool
-	strategy           string
 	outputFile         string
-	skipComposeUp      bool
 	composeProjectName string
 )
 
@@ -112,8 +110,8 @@ func detectWorktreeProjectName() (string, error) {
 
 // upCmd はupコマンドを表します。
 var upCmd = &cobra.Command{
-	Use:   "up [docker-compose-options...]",
-	Short: "ポート衝突・ネットワーク衝突を解決してDocker Composeを起動",
+	Use:   "up",
+	Short: "ポート衝突・ネットワーク衝突を解決してoverride.ymlを生成",
 	Long: `Docker Composeのポートバインディング衝突とネットワークサブネット衝突を検出・解決し、docker-compose.override.yml を生成します。
 
 ポート衝突・ネットワーク衝突の自動解決機能を提供し、override.ymlを生成しますが、docker compose upは実行しません。
@@ -127,13 +125,9 @@ var upCmd = &cobra.Command{
   # ポート範囲を指定
   gopose up --port-range 9000-9999
 
-  # Docker Composeオプションを渡す
-  gopose up -d --build
-  gopose up -- --scale web=3
-
   # ドライラン（override.ymlの生成のみ）
   gopose up --dry-run
-  
+
   # ネットワーク衝突も含めて解決
   gopose up --verbose  # ネットワーク衝突の詳細ログを表示`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -164,7 +158,6 @@ var upCmd = &cobra.Command{
 			types.Field{Key: "compose_file", Value: filePath},
 			types.Field{Key: "output_file", Value: outputFile},
 			types.Field{Key: "project_name", Value: composeProjectName},
-			types.Field{Key: "strategy", Value: strategy},
 			types.Field{Key: "port_range", Value: fmt.Sprintf("%d-%d", portConfig.Range.Start, portConfig.Range.End)},
 			types.Field{Key: "reserved_ports", Value: portConfig.Reserved})
 
@@ -218,20 +211,9 @@ var upCmd = &cobra.Command{
 			types.Field{Key: "port_conflicts", Value: len(conflictInfo.PortConflicts)},
 			types.Field{Key: "network_conflicts", Value: len(conflictInfo.NetworkConflicts)})
 
-		// 解決戦略の決定
-		resolutionStrategy := types.ResolutionStrategyAutoIncrement
-		switch strategy {
-		case "auto":
-			resolutionStrategy = types.ResolutionStrategyAutoIncrement
-		case "range":
-			resolutionStrategy = types.ResolutionStrategyRangeAllocation
-		case "user":
-			resolutionStrategy = types.ResolutionStrategyUserDefined
-		}
-
 		// 統一的な衝突解決
 		unifiedGenerator := generator.NewUnifiedOverrideGeneratorImpl(portAllocator, logger)
-		if err := unifiedGenerator.ResolveConflicts(ctx, conflictInfo, resolutionStrategy, portConfig); err != nil {
+		if err := unifiedGenerator.ResolveConflicts(ctx, conflictInfo, types.ResolutionStrategyAutoIncrement, portConfig); err != nil {
 			return fmt.Errorf("衝突解決に失敗: %w", err)
 		}
 
@@ -282,25 +264,9 @@ var upCmd = &cobra.Command{
 func init() {
 	// gopose固有のフラグを定義
 	upCmd.Flags().StringVar(&portRange, "port-range", "", "利用するポート範囲 (例: 8000-9999)")
-	upCmd.Flags().StringVar(&strategy, "strategy", "auto", "解決戦略 (auto, range, user)")
 	upCmd.Flags().StringVarP(&outputFile, "output", "o", "", "出力ファイル名 (デフォルト: compose.override.yml)")
 	upCmd.Flags().BoolVar(&dryRun, "dry-run", false, "ドライラン（override.yml生成のみ、Docker Composeは実行しない）")
-	upCmd.Flags().BoolVar(&skipComposeUp, "skip-compose-up", false, "[非推奨] このオプションは不要になりました。デフォルトでdocker compose upは実行されません。")
 
-	// Docker Composeオプションもサポート（透過的に渡される）
 	upCmd.Flags().StringVarP(&filePath, "file", "f", "compose.yml", "Docker Composeファイルのパス")
 	upCmd.Flags().StringVarP(&composeProjectName, "project-name", "p", "", "Docker Composeプロジェクト名")
-	upCmd.Flags().BoolP("detach", "d", false, "Detached mode: バックグラウンドでサービスを実行")
-	upCmd.Flags().Bool("build", false, "サービス起動前にイメージをビルド")
-	upCmd.Flags().Bool("force-recreate", false, "設定が変更されていなくてもコンテナを再作成")
-	upCmd.Flags().Bool("no-deps", false, "リンクされたサービスを起動しない")
-	upCmd.Flags().Bool("remove-orphans", false, "Composeファイルで定義されていないサービスのコンテナを削除")
-	upCmd.Flags().String("scale", "", "サービスの起動数を指定 (例: web=3,db=1)")
-	upCmd.Flags().StringSlice("env-file", []string{}, "環境変数ファイルを指定")
-	upCmd.Flags().Bool("abort-on-container-exit", false, "いずれかのコンテナが停止したときに全てのコンテナを停止")
-	upCmd.Flags().String("exit-code-from", "", "指定されたサービスの終了コードを返す")
-	upCmd.Flags().Duration("timeout", 0, "コンテナの停止タイムアウト")
-
-	// 未知のフラグを許可（docker composeに渡すため）
-	upCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
 }
