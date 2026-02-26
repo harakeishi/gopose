@@ -29,17 +29,33 @@ steps:
   - desc: "Port conflict resolution works"
     exec:
       command: |
+        ROOT_DIR=$(pwd)
+        PID_FILE=/tmp/gopose_test.pid
+        OCCUPY_BIN="$ROOT_DIR/occupy_port"
+        FIXTURE_DIR="$ROOT_DIR/fixtures"
+
+        cleanup() {
+          if [ -f "$PID_FILE" ]; then
+            kill "$(cat "$PID_FILE")" 2>/dev/null || true
+            rm -f "$PID_FILE"
+          fi
+          rm -f "$OCCUPY_BIN" "$FIXTURE_DIR/{{ vars.override_file }}"
+        }
+        trap cleanup EXIT
+
         # Build and run Go port occupier
-        go build -o occupy_port occupy_port.go
-        ./occupy_port 8080 > /dev/null 2>&1 & echo $! > /tmp/gopose_test.pid
+        go build -o "$OCCUPY_BIN" occupy_port.go
+        "$OCCUPY_BIN" 8080 > /dev/null 2>&1 & echo $! > "$PID_FILE"
         sleep 2
         
         # Test conflict resolution
-        cd fixtures
-        ../../../gopose up -f port-conflict.yml --verbose
-        
-        # Cleanup
-        kill $(cat /tmp/gopose_test.pid) 2>/dev/null || true
-        rm -f /tmp/gopose_test.pid {{ vars.override_file }} occupy_port
+        cd "$FIXTURE_DIR"
+        output=$(../../../gopose up -f port-conflict.yml --verbose 2>&1)
+        echo "$output"
+
+        # Assert port conflicts are actually detected and reported
+        echo "$output" | grep -q "Port Conflicts:"
+        echo "$output" | grep -q "SERVICE"
+        echo "$output" | grep -q "web1"
     test: |
       current.exit_code == 0
