@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,7 +33,7 @@ func NewNetstatPortDetector(logger logger.Logger) *NetstatPortDetector {
 func (n *NetstatPortDetector) DetectUsedPorts(ctx context.Context) ([]int, error) {
 	n.logger.Debug(ctx, "netstatを使用してポートスキャンを開始")
 
-	// netstatコマンドを実行（macOS対応）
+	// netstatコマンドを実行
 	cmd := exec.CommandContext(ctx, "netstat", "-an")
 	output, err := cmd.Output()
 	if err != nil {
@@ -117,11 +118,7 @@ func (n *NetstatPortDetector) IsPortInUse(ctx context.Context, port int) (bool, 
 func (n *NetstatPortDetector) parseNetstatOutput(output string) ([]int, error) {
 	lines := strings.Split(output, "\n")
 	ports := make(map[int]bool) // 重複を避けるためにmapを使用
-
-	// macOS/BSD系のnetstat出力形式に対応する正規表現
-	// 例1: tcp46      0      0  *.8080                 *.*                    LISTEN
-	// 例2: tcp4       0      0  127.0.0.1.3333         *.*                    LISTEN
-	re := regexp.MustCompile(`(?:tcp|udp)\S*\s+\d+\s+\d+\s+(?:\*|\d+\.\d+\.\d+\.\d+)\.(\d+)\s+.*LISTEN`)
+	re := n.listenLineRegexByCurrentOS()
 
 	for _, line := range lines {
 		// LISTENステートのみを対象とする
@@ -130,15 +127,16 @@ func (n *NetstatPortDetector) parseNetstatOutput(output string) ([]int, error) {
 		}
 
 		matches := re.FindStringSubmatch(line)
-		if len(matches) >= 2 {
-			portStr := matches[1]
-			port, err := strconv.Atoi(portStr)
-			if err != nil {
-				// ポート番号の変換に失敗した場合はスキップ
-				continue
-			}
-			ports[port] = true
+		if len(matches) < 2 {
+			continue
 		}
+
+		port, err := strconv.Atoi(matches[1])
+		if err != nil {
+			// ポート番号の変換に失敗した場合はスキップ
+			continue
+		}
+		ports[port] = true
 	}
 
 	// mapからスライスに変換
@@ -148,6 +146,38 @@ func (n *NetstatPortDetector) parseNetstatOutput(output string) ([]int, error) {
 	}
 
 	return result, nil
+}
+
+var (
+	// macOS/BSD系のnetstat出力形式
+	// 例1: tcp46      0      0  *.8080                 *.*                    LISTEN
+	// 例2: tcp4       0      0  127.0.0.1.3333         *.*                    LISTEN
+	netstatListenRegexBSD = regexp.MustCompile(`(?:tcp|udp)\S*\s+\d+\s+\d+\s+(?:\*|\d+\.\d+\.\d+\.\d+)\.(\d+)\s+.*LISTEN`)
+
+	// Linux系のnetstat出力形式
+	// 例1: tcp        0      0 0.0.0.0:11211           0.0.0.0:*               LISTEN
+	// 例2: tcp6       0      0 :::11211                :::*                    LISTEN
+	netstatListenRegexLinux = regexp.MustCompile(`(?:tcp|udp)\S*\s+\d+\s+\d+\s+\S+:(\d+)\s+.*LISTEN`)
+)
+
+// listenLineRegexByCurrentOS は実行OSごとの netstat LISTEN 行パーサを返します。
+func (n *NetstatPortDetector) listenLineRegexByCurrentOS() *regexp.Regexp {
+	return netstatListenRegexByOS(runtime.GOOS)
+}
+
+// netstatListenRegexByOS はOSごとに対応する netstat LISTEN 行パーサを返します。
+func netstatListenRegexByOS(goos string) *regexp.Regexp {
+	switch goos {
+	case "linux":
+		return netstatListenRegexLinux
+	case "darwin", "freebsd", "openbsd", "netbsd":
+		return netstatListenRegexBSD
+	case "windows":
+		// Windowsは未検証のため、Linux形式をベースにベストエフォートで解析する
+		return netstatListenRegexLinux
+	default:
+		return netstatListenRegexBSD
+	}
 }
 
 // PortAllocatorImpl はポート割り当ての実装です。
