@@ -122,6 +122,14 @@ See [Configuration Reference](docs/configuration.md) for all options.
 - **Reserved ports** — Exclude specific ports from allocation ([details](docs/reserved-ports.md))
 - **Cross-platform** — Linux, macOS, and Windows
 
+### Platform Test Status
+
+| Platform | Test Status |
+|----------|-------------|
+| macOS | Tested |
+| Linux | Tested |
+| Windows | Not tested |
+
 ## Documentation
 
 | Document | Description |
