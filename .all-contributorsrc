@@ -31,6 +31,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "aaaaninja",
+      "name": "aaaaninja",
+      "avatar_url": "https://avatars.githubusercontent.com/u/39687282?v=4",
+      "profile": "https://aaaa.ninja",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
