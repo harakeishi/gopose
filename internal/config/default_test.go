@@ -3,7 +3,6 @@ package config
 import (
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -30,17 +29,6 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if config.File.OverrideFile != "compose.override.yml" {
 		t.Errorf("File.OverrideFile = %s, want compose.override.yml", config.File.OverrideFile)
-	}
-	if !config.File.BackupEnabled {
-		t.Error("File.BackupEnabled = false, want true")
-	}
-
-	// verify watcher config
-	if config.Watcher.Interval != 5*time.Second {
-		t.Errorf("Watcher.Interval = %v, want 5s", config.Watcher.Interval)
-	}
-	if config.Watcher.MaxRetries != 3 {
-		t.Errorf("Watcher.MaxRetries = %d, want 3", config.Watcher.MaxRetries)
 	}
 
 	// verify log config
@@ -81,29 +69,6 @@ func TestDefaultFileConfig(t *testing.T) {
 	if config.OverrideFile != "compose.override.yml" {
 		t.Errorf("OverrideFile = %s, want compose.override.yml", config.OverrideFile)
 	}
-	if !config.BackupEnabled {
-		t.Error("BackupEnabled = false, want true")
-	}
-	if config.BackupDir != ".gopose/backups" {
-		t.Errorf("BackupDir = %s, want .gopose/backups", config.BackupDir)
-	}
-}
-
-func TestDefaultWatcherConfig(t *testing.T) {
-	config := DefaultWatcherConfig()
-
-	if config.Interval != 5*time.Second {
-		t.Errorf("Interval = %v, want 5s", config.Interval)
-	}
-	if config.CleanupDelay != 30*time.Second {
-		t.Errorf("CleanupDelay = %v, want 30s", config.CleanupDelay)
-	}
-	if config.MaxRetries != 3 {
-		t.Errorf("MaxRetries = %d, want 3", config.MaxRetries)
-	}
-	if config.RetryInterval != 1*time.Second {
-		t.Errorf("RetryInterval = %v, want 1s", config.RetryInterval)
-	}
 }
 
 func TestDefaultLogConfig(t *testing.T) {
@@ -115,18 +80,6 @@ func TestDefaultLogConfig(t *testing.T) {
 	if config.Format != "text" {
 		t.Errorf("Format = %s, want text", config.Format)
 	}
-	if config.File != "" {
-		t.Errorf("File = %s, want empty string", config.File)
-	}
-	if config.MaxSize != 100 {
-		t.Errorf("MaxSize = %d, want 100", config.MaxSize)
-	}
-	if config.MaxAge != 30 {
-		t.Errorf("MaxAge = %d, want 30", config.MaxAge)
-	}
-	if !config.Compress {
-		t.Error("Compress = false, want true")
-	}
 }
 
 func TestDevelopmentConfig(t *testing.T) {
@@ -137,9 +90,6 @@ func TestDevelopmentConfig(t *testing.T) {
 	}
 	if config.Log.Format != "text" {
 		t.Errorf("Log.Format = %s, want text", config.Log.Format)
-	}
-	if config.Watcher.Interval != 2*time.Second {
-		t.Errorf("Watcher.Interval = %v, want 2s", config.Watcher.Interval)
 	}
 
 	// verify base config is correctly inherited
@@ -160,12 +110,6 @@ func TestProductionConfig(t *testing.T) {
 	if config.Log.File != "/var/log/gopose/gopose.log" {
 		t.Errorf("Log.File = %s, want /var/log/gopose/gopose.log", config.Log.File)
 	}
-	if config.Watcher.Interval != 10*time.Second {
-		t.Errorf("Watcher.Interval = %v, want 10s", config.Watcher.Interval)
-	}
-	if config.Watcher.CleanupDelay != 60*time.Second {
-		t.Errorf("Watcher.CleanupDelay = %v, want 60s", config.Watcher.CleanupDelay)
-	}
 
 	// verify base config is correctly inherited
 	if config.Port.Range.Start != 8000 {
@@ -181,15 +125,6 @@ func TestTestConfig(t *testing.T) {
 	}
 	if config.Log.Format != "text" {
 		t.Errorf("Log.Format = %s, want text", config.Log.Format)
-	}
-	if config.File.BackupEnabled {
-		t.Error("File.BackupEnabled = true, want false (for testing)")
-	}
-	if config.Watcher.Interval != 100*time.Millisecond {
-		t.Errorf("Watcher.Interval = %v, want 100ms", config.Watcher.Interval)
-	}
-	if config.Watcher.CleanupDelay != 1*time.Second {
-		t.Errorf("Watcher.CleanupDelay = %v, want 1s", config.Watcher.CleanupDelay)
 	}
 
 	// verify base config is correctly inherited

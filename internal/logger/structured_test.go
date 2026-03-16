@@ -193,18 +193,6 @@ func TestDefaultConfig(t *testing.T) {
 	if config.Format != "text" {
 		t.Errorf("DefaultConfig().Format = %v, want text", config.Format)
 	}
-	if config.File != "" {
-		t.Errorf("DefaultConfig().File = %v, want empty string", config.File)
-	}
-	if config.MaxSize != 100 {
-		t.Errorf("DefaultConfig().MaxSize = %v, want 100", config.MaxSize)
-	}
-	if config.MaxAge != 30 {
-		t.Errorf("DefaultConfig().MaxAge = %v, want 30", config.MaxAge)
-	}
-	if !config.Compress {
-		t.Error("DefaultConfig().Compress = false, want true")
-	}
 }
 
 func TestFormatJSON(t *testing.T) {

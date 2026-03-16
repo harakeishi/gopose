@@ -28,13 +28,6 @@ type PortValidator interface {
 	ValidatePortMapping(ctx context.Context, mapping types.PortMapping) error
 }
 
-// PortScanner はポートスキャン機能の統合インターフェースです。
-type PortScanner interface {
-	PortDetector
-	PortAllocator
-	PortValidator
-}
-
 // SystemPortInfo はシステムのポート情報を表します。
 type SystemPortInfo struct {
 	Port        int    `json:"port"`
@@ -64,11 +57,3 @@ type NetworkDetector interface {
 	DetectNetworks(ctx context.Context) ([]NetworkInfo, error)
 }
 
-// AllocationStrategy はポート割り当て戦略を表します。
-type AllocationStrategy string
-
-const (
-	AllocationStrategySequential AllocationStrategy = "sequential"
-	AllocationStrategyRandom     AllocationStrategy = "random"
-	AllocationStrategyProximity  AllocationStrategy = "proximity"
-)

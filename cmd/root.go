@@ -33,9 +33,6 @@ var rootCmd = &cobra.Command{
 	Example: `  # ポート衝突を検出・解決してDocker Composeを準備
   gopose up
 
-  # 生成されたoverride.ymlファイルを削除
-  gopose clean
-
   # 現在の状態確認
   gopose status
 
@@ -62,7 +59,6 @@ func init() {
 
 	// 各サブコマンドをルートコマンドに追加
 	rootCmd.AddCommand(upCmd)
-	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(versionCmd)
 }
